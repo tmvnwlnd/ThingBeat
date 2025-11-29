@@ -1,0 +1,298 @@
+'use client';
+
+import { useStore } from '@/store/useStore';
+import { useEffect, useRef } from 'react';
+import * as Tone from 'tone';
+import JSZip from 'jszip';
+
+export function Header() {
+  const settings = useStore((state) => state.settings);
+  const updateSettings = useStore((state) => state.updateSettings);
+  const exportState = useStore((state) => state.exportState);
+  const setExportState = useStore((state) => state.setExportState);
+  const cells = useStore((state) => state.cells);
+
+  const recorderRef = useRef<Tone.Recorder | null>(null);
+
+  const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const keyIndex = keys.indexOf(settings.key.split(' ')[0]);
+  const isMinor = settings.key.includes('minor');
+
+  const incrementLoopLength = () => {
+    const lengths = [1, 2, 4, 8, 16];
+    const currentIndex = lengths.indexOf(settings.loopLength);
+    if (currentIndex < lengths.length - 1) {
+      updateSettings({ loopLength: lengths[currentIndex + 1] });
+    }
+  };
+
+  const decrementLoopLength = () => {
+    const lengths = [1, 2, 4, 8, 16];
+    const currentIndex = lengths.indexOf(settings.loopLength);
+    if (currentIndex > 0) {
+      updateSettings({ loopLength: lengths[currentIndex - 1] });
+    }
+  };
+
+  const incrementBpm = () => {
+    if (settings.bpm < 300) {
+      updateSettings({ bpm: settings.bpm + 1 });
+    }
+  };
+
+  const decrementBpm = () => {
+    if (settings.bpm > 60) {
+      updateSettings({ bpm: settings.bpm - 1 });
+    }
+  };
+
+  const incrementKey = () => {
+    const nextIndex = (keyIndex + 1) % keys.length;
+    updateSettings({ key: isMinor ? `${keys[nextIndex]} minor` : keys[nextIndex] });
+  };
+
+  const decrementKey = () => {
+    const prevIndex = (keyIndex - 1 + keys.length) % keys.length;
+    updateSettings({ key: isMinor ? `${keys[prevIndex]} minor` : keys[prevIndex] });
+  };
+
+  const setMajor = () => {
+    updateSettings({ key: keys[keyIndex] });
+  };
+
+  const setMinor = () => {
+    updateSettings({ key: `${keys[keyIndex]} minor` });
+  };
+
+  const toggleMuteAll = () => {
+    updateSettings({ muteAll: !settings.muteAll });
+  };
+
+  const toggleSynthMode = () => {
+    updateSettings({ synthMonophonic: !settings.synthMonophonic });
+  };
+
+  const handleExport = async () => {
+    if (exportState !== 'idle') return;
+
+    try {
+      // Initialize Tone.js if not started
+      if (Tone.Transport.state !== 'started') {
+        await Tone.start();
+        Tone.Transport.start();
+      }
+
+      // Set up recorder
+      const recorder = new Tone.Recorder();
+      Tone.getDestination().connect(recorder);
+      recorderRef.current = recorder;
+
+      // Calculate loop duration in seconds
+      const beatsPerBar = 4;
+      const totalBeats = settings.loopLength * beatsPerBar;
+      const secondsPerBeat = 60 / settings.bpm;
+      const loopDuration = totalBeats * secondsPerBeat;
+      const recordDuration = loopDuration * 2; // Record 2 loops
+
+      // Wait for the start of the next loop
+      setExportState('waiting');
+
+      // Calculate time until next loop start
+      const currentPosition = Tone.Transport.seconds;
+      const timeIntoLoop = currentPosition % loopDuration;
+      const timeUntilNextLoop = loopDuration - timeIntoLoop;
+
+      setTimeout(async () => {
+        // Start recording at the beginning of the loop
+        setExportState('recording');
+        recorder.start();
+
+        // Stop recording after 2 loops
+        setTimeout(async () => {
+          setExportState('processing');
+
+          // Stop recording
+          const recording = await recorder.stop();
+
+          // Create zip file
+          const zip = new JSZip();
+
+          // Add recorded performance
+          zip.file('performance.webm', recording);
+
+          // Add all generated sound files
+          const soundsFolder = zip.folder('sounds');
+          if (soundsFolder) {
+            for (const cell of cells) {
+              if (cell.state === 'ready' && cell.audioUrl && cell.category) {
+                try {
+                  // Fetch the audio data
+                  const response = await fetch(cell.audioUrl);
+                  const blob = await response.blob();
+
+                  // Create filename
+                  const filename = `cell_${cell.id}_${cell.category}.mp3`;
+                  soundsFolder.file(filename, blob);
+                } catch (error) {
+                  console.error(`Failed to add cell ${cell.id} to zip:`, error);
+                }
+              }
+            }
+          }
+
+          // Generate and download zip
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const url = URL.createObjectURL(zipBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `thingbeat_export_${Date.now()}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          // Clean up
+          recorder.dispose();
+          recorderRef.current = null;
+          setExportState('idle');
+        }, recordDuration * 1000);
+      }, timeUntilNextLoop * 1000);
+    } catch (error) {
+      console.error('Export failed:', error);
+      setExportState('idle');
+    }
+  };
+
+  return (
+    <header className="bg-thingbeat-blue border-b-2 border-thingbeat-white p-2">
+      <div className="flex items-center justify-between gap-6">
+        {/* Left Section */}
+        <div className="flex items-center gap-6">
+          {/* Logo */}
+          <div className="bg-thingbeat-white px-2 py-2.5">
+            <h1 className="text-[32px] font-bold text-thingbeat-blue leading-none">Thingbeat</h1>
+          </div>
+
+          {/* Loop Length Control */}
+          <div className="flex items-center gap-4 p-2">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={decrementLoopLength}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+              >
+                <span className="text-sm leading-none">-</span>
+              </button>
+              <span className="text-[20px] text-thingbeat-white w-4 text-center">{settings.loopLength}</span>
+              <button
+                onClick={incrementLoopLength}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+              >
+                <span className="text-sm leading-none">+</span>
+              </button>
+            </div>
+            <span className="text-sm text-thingbeat-white">Bars</span>
+          </div>
+
+          {/* BPM Control */}
+          <div className="flex items-center gap-4 p-2">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={decrementBpm}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+              >
+                <span className="text-sm leading-none">-</span>
+              </button>
+              <span className="text-[20px] text-thingbeat-white min-w-[43px] text-center">{settings.bpm}</span>
+              <button
+                onClick={incrementBpm}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+              >
+                <span className="text-sm leading-none">+</span>
+              </button>
+            </div>
+            <span className="text-sm text-thingbeat-white">BPM</span>
+          </div>
+
+          {/* Key Control */}
+          <div className="flex items-center gap-2 p-2">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={decrementKey}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+              >
+                <span className="text-sm leading-none">-</span>
+              </button>
+              <span className="text-[20px] text-thingbeat-white w-4 text-center">{keys[keyIndex]}</span>
+              <button
+                onClick={incrementKey}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+              >
+                <span className="text-sm leading-none">+</span>
+              </button>
+            </div>
+            <div className="flex">
+              <button
+                onClick={setMajor}
+                className={`px-1 h-6 text-sm ${
+                  !isMinor
+                    ? 'bg-thingbeat-white text-thingbeat-blue'
+                    : 'bg-thingbeat-blue text-thingbeat-white border-2 border-thingbeat-white'
+                }`}
+              >
+                Major
+              </button>
+              <button
+                onClick={setMinor}
+                className={`px-1 h-6 text-sm hover:border-3 ${
+                  isMinor
+                    ? 'bg-thingbeat-white text-thingbeat-blue'
+                    : 'bg-thingbeat-blue text-thingbeat-white border-2 border-thingbeat-white'
+                }`}
+              >
+                Minor
+              </button>
+            </div>
+          </div>
+
+          {/* Mute Button */}
+          <button
+            onClick={toggleMuteAll}
+            className="w-12 h-12 border-2 border-thingbeat-white flex items-center justify-center hover:border-4"
+            title={settings.muteAll ? 'Unmute All' : 'Mute All'}
+          >
+            <img
+              src={settings.muteAll ? '/icons/muted.svg' : '/icons/volume.svg'}
+              alt={settings.muteAll ? 'Muted' : 'Volume'}
+              className="w-20 h-20"
+            />
+          </button>
+
+          {/* Synth Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.synthMonophonic}
+                onChange={toggleSynthMode}
+                className="w-4 h-4 cursor-pointer accent-white"
+              />
+              <span className="text-sm text-thingbeat-white font-silkscreen">Mono Synth</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Export Button */}
+        <button
+          className="px-4 h-12 text-lg border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleExport}
+          disabled={exportState !== 'idle'}
+        >
+          {exportState === 'idle' && 'Export sounds'}
+          {exportState === 'waiting' && 'Waiting to record...'}
+          {exportState === 'recording' && 'Recording...'}
+          {exportState === 'processing' && 'Processing...'}
+        </button>
+      </div>
+    </header>
+  );
+}

@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --thingbeat-blue: #2600FF;
+  --thingbeat-white: #FFFFFF;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Silkscreen', monospace;
+  background-color: var(--thingbeat-white);
+  color: var(--thingbeat-blue);
+}
