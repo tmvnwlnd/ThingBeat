@@ -388,7 +388,7 @@ export default function PromptLab() {
         {tests.length === 0 && (
           <div className="bg-white border-2 border-thingbeat-blue p-8 text-center">
             <p className="text-thingbeat-blue font-silkscreen">
-              No tests yet. Select a category and click "Test Prompt" to begin.
+              No tests yet. Select a category and click &quot;Test Prompt&quot; to begin.
             </p>
           </div>
         )}
