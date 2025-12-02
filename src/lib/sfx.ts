@@ -44,14 +44,17 @@ export function buildSfxRequest(
   const duration_seconds =
     category === "drum_loop" ? fullDuration / 2 : fullDuration;
 
-  // 4. Return the request object with separated body and query params
+  // 4. Get category-specific prompt influence (unless overridden in options)
+  const prompt_influence = options?.prompt_influence ?? getCategoryPromptInfluence(category);
+
+  // 5. Return the request object with separated body and query params
   return {
     body: {
       text,
       duration_seconds,
       loop,
       model_id: options?.model_id,
-      prompt_influence: options?.prompt_influence,
+      prompt_influence,
     },
     queryParams: {
       output_format: options?.output_format ?? "mp3_44100_128",
@@ -97,5 +100,39 @@ function guessDefaultDuration(
 
     default:
       return 5.0;
+  }
+}
+
+/**
+ * Get category-specific prompt influence values.
+ * Higher values = more closely follows prompt, less variation
+ * Lower values = more creative/varied interpretations
+ *
+ * Range: 0.0 - 1.0 (default is 0.3)
+ */
+function getCategoryPromptInfluence(category: SoundCategory): number {
+  switch (category) {
+    case "drum_one_shot":
+      // Higher influence for consistent, predictable drum hits
+      return 0.6;
+
+    case "drum_loop":
+      // Medium-high for consistent groove patterns
+      return 0.5;
+
+    case "synth_timbre":
+      // Medium for balanced timbre characteristics
+      return 0.4;
+
+    case "lead_line":
+      // Medium for melodic consistency
+      return 0.4;
+
+    case "texture":
+      // Lower for more creative, evolving ambient textures
+      return 0.25;
+
+    default:
+      return 0.3;
   }
 }

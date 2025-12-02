@@ -1,5 +1,43 @@
 # ThingBeat - Development Changelog
 
+## 2025-11-29 - Critical Bug Fixes & Enhancements
+
+### Enhancements
+
+#### Dynamic Prompt Influence per Category
+- ✅ **Implemented category-specific prompt influence values for ElevenLabs API**
+  - **Purpose**: Control how closely ElevenLabs follows the prompt vs. creative interpretation
+  - **Implementation**: Added `getCategoryPromptInfluence()` function in `src/lib/sfx.ts`
+  - **Values**:
+    - `drum_one_shot`: 0.6 (higher for consistent, predictable hits)
+    - `drum_loop`: 0.5 (medium-high for consistent groove patterns)
+    - `synth_timbre`: 0.4 (medium for balanced timbre characteristics)
+    - `lead_line`: 0.4 (medium for melodic consistency)
+    - `texture`: 0.25 (lower for creative, evolving ambient textures)
+  - **Impact**: Better quality and consistency for rhythmic elements, more creativity for ambient textures
+
+---
+
+### Bug Fixes
+
+#### Posterization Effect Fix
+- ✅ **Fixed posterized images being sent to Claude API**
+  - **Issue**: Claude was receiving blue/white posterized images instead of full-color images, causing overly metallic/blue-focused descriptions
+  - **Root Cause**: Snapshot capture was drawing from the posterized canvas instead of raw video feed
+  - **Solution**: Modified snapshot capture to use raw video element instead of canvas in both files:
+    - **src/components/Cell.tsx**:
+      - Added `videoRef` to store reference to raw video element (line 30)
+      - Updated `useEffect` to store video element in ref (line 53)
+      - Modified `handleCellClick` to capture from `videoRef.current` instead of `canvasRef.current` (lines 102-118)
+    - **src/app/prompt-lab/page.tsx**:
+      - Modified `handleSnapshot` to capture from `videoRef.current` instead of `canvasRef.current` (line 126, 143)
+  - **Result**:
+    - Main app: Claude receives full-color images while UI continues to display posterized blue/white effect for aesthetics
+    - Prompt Lab: Test results now show unposterized full-color snapshots for accurate prompt testing
+  - **Impact**: Significantly improved accuracy of Claude's image descriptions and resulting sound generation prompts
+
+---
+
 ## 2025-11-28 - Initial Development Phase
 
 ### Core Features Implemented

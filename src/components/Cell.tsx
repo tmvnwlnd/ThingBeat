@@ -27,6 +27,7 @@ export function Cell({ cellId }: CellProps) {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   // Set random default category on mount
   useEffect(() => {
@@ -47,6 +48,9 @@ export function Cell({ cellId }: CellProps) {
     const video = document.createElement('video');
     video.srcObject = videoStream;
     video.play();
+
+    // Store video ref so we can capture from raw video (not posterized canvas)
+    videoRef.current = video;
 
     const drawFrame = () => {
       if (cell.state === 'idle') {
@@ -95,9 +99,10 @@ export function Cell({ cellId }: CellProps) {
   const handleCellClick = async () => {
     if (cell.state !== 'idle' || isGenerating || !cell.category) return;
 
-    // Capture snapshot from canvas
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    // Capture snapshot from RAW VIDEO (not posterized canvas)
+    // This ensures Claude gets the full-color image, while UI shows posterized version
+    const video = videoRef.current;
+    if (!video) return;
 
     // Create a smaller canvas for API to reduce costs
     // Claude charges based on image size, so we'll resize to 400x225 (keeps 16:9 ratio)
@@ -108,8 +113,9 @@ export function Cell({ cellId }: CellProps) {
 
     if (!smallCtx) return;
 
-    // Draw the original canvas to the smaller one (automatic downscaling)
-    smallCtx.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+    // Draw the raw video to the smaller canvas (automatic downscaling)
+    // This captures FULL COLOR, not the posterized blue/white effect
+    smallCtx.drawImage(video, 0, 0, smallCanvas.width, smallCanvas.height);
 
     // Convert to JPEG with 70% quality (much smaller than PNG)
     const snapshot = smallCanvas.toDataURL('image/jpeg', 0.7);

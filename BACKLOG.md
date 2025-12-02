@@ -93,6 +93,89 @@
 
 ---
 
+### 7. Bayer-Matrix Dithering Filter
+**Priority:** Medium
+**Description:** Replace the current posterization effect with a Bayer-matrix dithering filter using the GLSL shader included in the repository.
+
+**Current State**: Using simple threshold-based posterization (blue/white conversion)
+
+**Implementation Notes**:
+- Use the `fragmentShader.glsl` file in the repo
+- Apply Bayer-matrix dithering algorithm for better visual quality
+- Maintain the same blue/white color scheme
+- Keep the raw video capture for Claude API (don't apply dithering to snapshots sent to API)
+
+**Files to modify**:
+- `src/components/Cell.tsx` - Canvas rendering effect
+- `src/app/prompt-lab/page.tsx` - Canvas rendering effect
+- `fragmentShader.glsl` - Shader implementation
+
+---
+
+### 8. Dynamic BPM Adjustment for Generated Sounds
+**Priority:** High
+**Description:** When BPM is changed after sounds have been generated, automatically speed up or slow down drum loops and melodies to match the new BPM.
+
+**Affected Categories**:
+- `drum_loop` - Should adjust playback speed to match new BPM
+- `lead_line` - Should adjust playback speed to match new BPM
+- Other categories (drum_one_shot, synth_timbre, texture) are not affected by BPM changes
+
+**Implementation Notes**:
+- Use Tone.js playback rate manipulation
+- Calculate playback rate: `newBPM / originalBPM`
+- Store original BPM with each cell when generated
+- Apply rate adjustment when BPM changes in global settings
+- Ensure loops still sync properly after adjustment
+
+**Files to modify**:
+- `src/components/SoundControls.tsx` - Playback logic
+- `src/store/useStore.ts` - Track original BPM per cell
+
+---
+
+### 9. Dynamic Key Transposition for Melodies
+**Priority:** High
+**Description:** When the key is changed after a melody has been generated, automatically transpose the melody to match the new key.
+
+**Affected Categories**:
+- `lead_line` - Should transpose to new key
+
+**Implementation Notes**:
+- Calculate semitone difference between old and new key
+- Use Tone.js pitch shifting to transpose the melody
+- Store original key with each melody cell when generated
+- Handle both major and minor keys correctly
+- Consider using a key-to-semitone mapping (C=0, C#=1, D=2, etc.)
+
+**Files to modify**:
+- `src/components/SoundControls.tsx` - Playback logic for melodies
+- `src/store/useStore.ts` - Track original key per cell
+- `src/lib/prompt.ts` - May need key parsing utilities
+
+---
+
+### 10. Synth Keyboard Transposition
+**Priority:** High
+**Description:** When the key is changed in global settings, transpose the synth keyboard to match the new key.
+
+**Affected Categories**:
+- `synth_timbre` - Keyboard should transpose to new key
+
+**Implementation Notes**:
+- Calculate semitone offset from global key setting
+- Adjust all keyboard key mappings by the offset
+- Update the pitch shifting calculation in keyboard handler
+- Store the original key the synth was generated in
+- Visual keyboard display should reflect the transposition (optional)
+
+**Files to modify**:
+- `src/components/SoundControls.tsx` - Synth keyboard logic
+- `src/components/SynthKeyboard.tsx` - Visual keyboard (if showing transposed notes)
+- `src/store/useStore.ts` - Track original key per synth cell
+
+---
+
 ## Feature Requests
 
 ### 1. Community Board for Sharing Jams

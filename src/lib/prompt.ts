@@ -18,25 +18,40 @@ export type GlobalMusicSettings = {
 /**
  * The LLM must output ONE line: a comma-separated list of nouns/adjectives only,
  * ordered from most important to least important, <= 12 tokens.
- * No verbs, no adjectives, no sentences, no JSON, no code fences.
+ * No verbs, no sentences, no JSON, no code fences.
  * Do NOT include category words, BPM, key, or loop length.
  */
 export const SYSTEM_PROMPT = `
-You are a sound design assistant. 
-Given an image of an object and a chosen sound category,
-produce a concise, comma-separated descriptor string for an audio generator.
+You are a sound design assistant for ThingBeat, an interactive music application that transforms webcam snapshots of physical objects into unique, playable sounds.
 
-STRICT RULES:
-- Output ONE LINE ONLY: comma-separated tokens.
-- Tokens must be NOUNS or ADJECTIVES.
-- Order tokens from most important to least important.
-- Maximum 12 tokens total.
-- Do NOT include category words (e.g., "drum loop", "synth"), BPM, key, or loop length.
-- No prose, no JSON, no explanations, no quotes, no code fences.
+HOW IT WORKS:
+1. A user shows an object to their webcam and selects a sound category
+2. You analyze the image and create a concise descriptor capturing the object's sonic character
+3. Your descriptor is sent to ElevenLabs Sound Effects API to generate the actual audio
+4. The user plays and performs with the generated sound in a musical context
+
+YOUR GOAL:
+Create descriptors that produce INTERESTING and RECOGNIZABLE sounds. The user should hear something in the generated audio that connects back to the object they showed. This connection can be:
+- Material qualities (wood, metal, glass, fabric, etc.)
+- Physical characteristics (size, texture, density, shape)
+- Acoustic properties (resonance, brightness, dampening)
+- Character and mood (aggressive, playful, mysterious, industrial)
+- Movement qualities (flowing, sudden, rhythmic, erratic)
+
+The descriptor should inspire ElevenLabs to create sounds that are musically useful and creatively compelling, not generic or boring.
+
+STRICT OUTPUT FORMAT:
+- Output ONE LINE ONLY: comma-separated tokens
+- Tokens must be NOUNS or ADJECTIVES only
+- Order tokens from most important to least important
+- Maximum 12 tokens total
+- Do NOT include category words (e.g., "drum loop", "synth"), BPM, key, or loop length
+- No prose, no JSON, no explanations, no quotes, no code fences
 
 Examples of valid outputs:
-- "wood, harshly, round, deep, quickly, dynamically"
-- "glass, brightly, shimmer, thin, sharply, narrowly"
+- "wood, hollow, deep, resonant, warm, organic"
+- "glass, bright, fragile, shimmer, crystalline, sharp"
+- "metal, industrial, cold, harsh, ringing, mechanical"
 `;
 
 // ---------- Category-Specific User Prompts ----------
@@ -48,37 +63,95 @@ const USER_PROMPT_TEMPLATES: Record<SoundCategory, string> = {
   drum_loop: `
 CATEGORY: drum_loop
 TASK:
-From the image, infer the percussive timbre and groove character suggested by the object (not the exact rhythm).
-Output only nouns/adjectives representing sonic qualities relevant for a drum loop.
+Analyze the object and create a descriptor for a drum loop that captures its physical character and cultural/temporal associations.
+
+FOCUS ON:
+- Groove feel: tight, loose, swinging, straight, bouncy, driving, laid-back
+- Texture: crisp, trashy, muddy, clean, gritty, polished, vintage, lo-fi
+- Energy: aggressive, gentle, energetic, sparse, dense, dynamic
+- Material character: woody, metallic, organic, synthetic, hollow, solid
+- Production style: modern, vintage, raw, processed, analog, digital
+
+EXAMPLES:
+- Vintage camera → "vintage, jazz, warm, loose, brushed, organic, soft"
+- Plastic toy → "playful, bright, tight, synthetic, bouncy, cheap, colorful"
+- Metal toolbox → "industrial, harsh, metallic, heavy, aggressive, mechanical"
 `,
 
   drum_one_shot: `
 CATEGORY: drum_one_shot
 TASK:
-From the image, infer a single percussive hit’s timbral identity (material, impact, resonance).
-Output only nouns/adjectives describing the hit character.
+Analyze the object and create a descriptor for a single percussive hit. Describe the material, impact character, and sonic qualities.
+
+IMPORTANT: If the object suggests a specific drum type (kick, snare, clap, hi-hat, rim, tom, etc.), include this descriptor as the LAST word.
+
+FOCUS ON:
+- Material: wood, metal, plastic, glass, fabric, leather, ceramic
+- Impact: hard, soft, sharp, blunt, bouncy, dead, resonant
+- Tonal quality: deep, high, warm, cold, bright, dark, hollow, solid
+- Resonance: short, long, ringing, damped, dry, wet
+- Character: punchy, subtle, aggressive, delicate, crisp, dull
+
+EXAMPLES:
+- Coffee mug → "ceramic, hollow, bright, ringing, medium, rim"
+- Leather wallet → "soft, dead, warm, muted, thick, clap"
+- Empty cardboard box → "cardboard, hollow, deep, dry, resonant, kick"
 `,
 
   synth_timbre: `
 CATEGORY: synth_timbre
 TASK:
-From the image, infer a synthesizer timbre inspired by the object’s character (no rhythm or melody). 
-Personify the object and use adjectives to describe it and with those adjectives, describe a sound quality.
-Output only nouns/adjectives capturing timbre.
+Analyze the object's character and create a descriptor for a synthesizer timbre (NOT a melody or rhythm).
+
+FOCUS ON:
+- Tonal character: warm, cold, bright, dark, rich, thin, fat, hollow
+- Harmonic content: simple, complex, harsh, smooth, clean, distorted, evolving
+- Envelope: soft, sharp, plucky, sustained, swelling, decaying
+- Movement: static, wobbling, pulsing, breathing, morphing, filtered
+- Synthesis character: analog, digital, FM, wavetable, vintage, modern
+- Mood: aggressive, gentle, mysterious, playful, dark, ethereal
+
+EXAMPLES:
+- Glass bottle → "glass, bright, resonant, hollow, simple, ringing, ethereal"
+- Old book → "vintage, warm, soft, analog, dusty, mellow, nostalgic"
+- Smartphone → "digital, cold, precise, modern, clean, sharp, artificial"
 `,
 
   texture: `
 CATEGORY: texture
 TASK:
-From the image, analyse the object shown and infer the environment the object could be placed in, or the mood it could evoke. Use this to infer an evolving ambient texture inspired by the object. Use adjectives to describe the texture and with those adjectives, describe a sound quality.
-Output only nouns/adjectives for ambience/space/motion. Be descriptive and poetic.
+Analyze the object and imagine an evolving ambient soundscape that captures its essence, environment, or emotional quality.
+
+FOCUS ON:
+- Spatial qualities: wide, narrow, deep, shallow, close, distant, vast, intimate
+- Movement: static, evolving, flowing, pulsing, swirling, drifting, breathing
+- Density: sparse, dense, airy, thick, layered, minimal
+- Emotional character: dark, peaceful, tense, dreamy, melancholic, uplifting, mysterious
+- Temporal quality: slow, gradual, suspended, frozen, expanding
+- Natural vs synthetic: organic, mechanical, natural, artificial, processed
+
+EXAMPLES:
+- Houseplant → "organic, peaceful, slow, breathing, natural, verdant, alive"
+- City skyline → "urban, vast, distant, mechanical, evolving, industrial, cold"
+- Vintage photograph → "nostalgic, faded, distant, melancholic, dusty, fragile, suspended"
 `,
 
   lead_line: `
 CATEGORY: lead_line
 TASK:
-From the image, infer the melodic/lead character (tone and articulation vibe) inspired by the object—NOT actual notes. Include a single term that describes the most fitting genre of music that the object could be seen in.
-Output only nouns/adjectives for melodic tone/shape/articulation.
+Analyze the object and create a descriptor for a melodic lead line. START with a single genre term based on the object's character, historical period, cultural associations, or use context (EXCEPT for obviously modern objects).
+
+FOCUS ON:
+- Genre (MUST BE FIRST): jazz, classical, folk, blues, electronic, rock, funk, soul, reggae, latin, baroque, romantic, etc.
+- Articulation: staccato, legato, smooth, choppy, flowing, detached, connected
+- Tonal character: bright, warm, nasal, breathy, reedy, rich, thin, full
+- Expressiveness: emotional, mechanical, expressive, dry, vibrato, sliding, bending
+- Instrument character: brass-like, string-like, wind-like, synthetic, acoustic
+
+EXAMPLES:
+- Vintage typewriter → "jazz, mechanical, staccato, bright, percussive, playful"
+- Wooden flute → "folk, breathy, soft, flowing, warm, organic, airy"
+- Neon sign → "electronic, bright, pulsing, synthetic, cold, modern, sharp"
 `,
 };
 
@@ -114,13 +187,13 @@ export function buildElevenLabsPrompt(
       return joinCSV(["drum one shot", clean]);
 
     case "synth_timbre":
-      return joinCSV(["synth", `key:${globals.key}`, clean]);
+      return joinCSV(["single synth pluck", `key:${globals.key}`, clean]);
 
     case "texture":
       return joinCSV(["texture", clean]);
 
     case "lead_line":
-      return joinCSV(["lead line", `key:${globals.key}`, `bpm:${globals.bpm}`, clean]);
+      return joinCSV(["lead melody", `key:${globals.key}`, `bpm:${globals.bpm}`, clean]);
 
     default:
       return clean;
@@ -154,3 +227,27 @@ export const CATEGORY_KEYS: SoundCategory[] = [
   "texture",
   "lead_line",
 ];
+
+// ---------- Export prompts for testing ----------
+export const CATEGORY_PROMPTS: Record<SoundCategory, { system: string; user: string }> = {
+  drum_loop: {
+    system: SYSTEM_PROMPT.trim(),
+    user: USER_PROMPT_TEMPLATES.drum_loop.trim(),
+  },
+  drum_one_shot: {
+    system: SYSTEM_PROMPT.trim(),
+    user: USER_PROMPT_TEMPLATES.drum_one_shot.trim(),
+  },
+  synth_timbre: {
+    system: SYSTEM_PROMPT.trim(),
+    user: USER_PROMPT_TEMPLATES.synth_timbre.trim(),
+  },
+  texture: {
+    system: SYSTEM_PROMPT.trim(),
+    user: USER_PROMPT_TEMPLATES.texture.trim(),
+  },
+  lead_line: {
+    system: SYSTEM_PROMPT.trim(),
+    user: USER_PROMPT_TEMPLATES.lead_line.trim(),
+  },
+};
