@@ -3,25 +3,22 @@
 ## Known Issues
 
 ### 1. Synth Monophonic/Polyphonic Mode Switching
-**Priority:** Medium
-**Description:** The synth mode toggle between monophonic and polyphonic doesn't work correctly after the synth sound has been generated. Switching modes after creation causes the synth to break.
+**Priority:** ~~Medium~~ **RESOLVED** ✅
+**Description:** ~~The synth mode toggle between monophonic and polyphonic doesn't work correctly after the synth sound has been generated. Switching modes after creation causes the synth to break.~~
 
-**Expected Behavior:**
-- Monophonic mode: Only one note at a time, note stops when key is released
-- Polyphonic mode: Multiple notes can play simultaneously
-- Should be able to switch between modes at any time without breaking the synth
+**Resolution:** Removed the mono/poly toggle entirely. Synth now operates in polyphonic mode only (multiple notes can play simultaneously). This simplifies the codebase and removes a source of bugs.
 
-**Current Status:** Partially implemented but not working reliably
+**Current Behavior:**
+- ✅ Polyphonic mode: Multiple notes can play simultaneously
+- ✅ Works reliably with keyboard and QWERTY inputs
 
 ---
 
 ### 2. Missing Star Sprite Asset
-**Priority:** Low
-**Description:** The loading animation star sprite (`/icons/starsprite.gif`) returns a 404 error in the console.
+**Priority:** ~~Low~~ **RESOLVED** ✅
+**Description:** ~~The loading animation star sprite (`/icons/starsprite.gif`) returns a 404 error in the console.~~
 
-**Impact:** Visual only - loading state shows without the animated sprite
-
-**Fix:** Ensure the starsprite.gif file is in the public/icons directory
+**Resolution:** Added `starsprite.gif` to `public/icons/` directory. Loading animation now displays correctly.
 
 ---
 
@@ -109,9 +106,44 @@
 
 ---
 
-### 8. Dynamic BPM Adjustment for Generated Sounds
-**Priority:** High
-**Description:** When BPM is changed after sounds have been generated, automatically speed up or slow down drum loops and melodies to match the new BPM.
+### 8. Reverse Button for Textures
+**Priority:** Medium
+**Description:** Add a reverse button that plays texture sounds backwards for creative ambient effects.
+
+**Current State**: Textures play forward only
+
+**Affected Categories**:
+- `texture` - Should have reverse playback option
+
+**Implementation Notes**:
+- Add a reverse toggle button in the SoundControls component for texture category
+- Use Tone.js `reverse` property on the Player buffer
+- Button should toggle between forward and reverse playback
+- Visual indicator (icon or text) to show current playback direction
+- Reverse should work in combination with volume and mute controls
+- Consider auto-restart playback when toggling to hear the effect immediately
+
+**Technical Approach**:
+- Option 1: Use `player.reverse = true` in Tone.js (if supported)
+- Option 2: Reverse the audio buffer data directly using Web Audio API
+- Option 3: Create two players (forward and reverse) and swap between them
+
+**Files to modify**:
+- `src/components/SoundControls.tsx` - Add reverse button and playback logic
+- `src/store/useStore.ts` - Track reverse state per cell (optional)
+
+**UI Considerations**:
+- Place button near play/pause controls for texture cells
+- Use a simple icon (arrows pointing left or "REV" text)
+- Only visible for texture category
+
+---
+
+### 9. Dynamic BPM Adjustment for Generated Sounds
+**Priority:** ~~High~~ **COMPLETED** ✅
+**Description:** ~~When BPM is changed after sounds have been generated, automatically speed up or slow down drum loops and melodies to match the new BPM.~~
+
+**Status:** Implemented! BPM changes now automatically adjust playback rate for drum loops and melodies.
 
 **Affected Categories**:
 - `drum_loop` - Should adjust playback speed to match new BPM
@@ -131,17 +163,20 @@
 
 ---
 
-### 9. Dynamic Key Transposition for Melodies
-**Priority:** High
-**Description:** When the key is changed after a melody has been generated, automatically transpose the melody to match the new key.
+### 10. Dynamic Key Transposition for Melodies
+**Priority:** ~~High~~ **ON HOLD** ⏸️
+**Description:** ~~When the key is changed after a melody has been generated, automatically transpose the melody to match the new key.~~
+
+**Status:** Code implemented but UI controls disabled. Key changes are locked after sound generation to prevent interference with BPM adjustments. Transposition logic is ready for future re-enablement if needed.
 
 **Affected Categories**:
-- `lead_line` - Should transpose to new key
+- `lead_line` - Transposition implemented (UI-disabled)
+- `synth_timbre` - Transposition implemented (UI-disabled)
 
-**Implementation Notes**:
-- Calculate semitone difference between old and new key
-- Use Tone.js pitch shifting to transpose the melody
-- Store original key with each melody cell when generated
+**Implementation Notes** (Already Done):
+- ✅ Calculate semitone difference between old and new key
+- ✅ Use Tone.js pitch shifting to transpose sounds
+- ✅ Store original key with each cell when generated
 - Handle both major and minor keys correctly
 - Consider using a key-to-semitone mapping (C=0, C#=1, D=2, etc.)
 
@@ -152,24 +187,25 @@
 
 ---
 
-### 10. Synth Keyboard Transposition
-**Priority:** High
-**Description:** When the key is changed in global settings, transpose the synth keyboard to match the new key.
+### 11. Synth Keyboard Transposition
+**Priority:** ~~High~~ **ON HOLD** ⏸️
+**Description:** ~~When the key is changed in global settings, transpose the synth keyboard to match the new key.~~
+
+**Status:** Code implemented but UI controls disabled. Key changes are locked after sound generation to prevent interference with BPM adjustments. Transposition logic is ready for future re-enablement if needed.
 
 **Affected Categories**:
-- `synth_timbre` - Keyboard should transpose to new key
+- `synth_timbre` - Keyboard transposition implemented (UI-disabled)
 
-**Implementation Notes**:
-- Calculate semitone offset from global key setting
-- Adjust all keyboard key mappings by the offset
-- Update the pitch shifting calculation in keyboard handler
-- Store the original key the synth was generated in
-- Visual keyboard display should reflect the transposition (optional)
+**Implementation Notes** (Already Done):
+- ✅ Calculate semitone offset from global key setting
+- ✅ Adjust all keyboard key mappings by the offset
+- ✅ Update the pitch shifting calculation in keyboard handler
+- ✅ Store the original key the synth was generated in
+- Visual keyboard display could reflect the transposition (future enhancement)
 
-**Files to modify**:
-- `src/components/SoundControls.tsx` - Synth keyboard logic
-- `src/components/SynthKeyboard.tsx` - Visual keyboard (if showing transposed notes)
-- `src/store/useStore.ts` - Track original key per synth cell
+**Files Modified**:
+- ✅ `src/components/SoundControls.tsx` - Synth keyboard transposition logic
+- ✅ `src/store/useStore.ts` - Track original key per synth cell
 
 ---
 
