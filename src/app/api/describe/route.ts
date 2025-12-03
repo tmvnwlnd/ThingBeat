@@ -10,12 +10,15 @@ export async function POST(request: NextRequest) {
     console.log('\n🔍 === ENVIRONMENT DEBUG ===');
     console.log('All env vars with "API":', Object.keys(process.env).filter(k => k.includes('API')));
     console.log('All env vars with "CLAUDE":', Object.keys(process.env).filter(k => k.includes('CLAUDE')));
+    console.log('All env vars with "ANTHROPIC":', Object.keys(process.env).filter(k => k.includes('ANTHROPIC')));
+    console.log('ANTHROPIC_BASE_URL (if set):', process.env.ANTHROPIC_BASE_URL || 'NOT SET');
     console.log('CLAUDE_API_KEY exists?', !!apiKey);
     console.log('CLAUDE_API_KEY type:', typeof apiKey);
     console.log('CLAUDE_API_KEY length:', apiKey?.length);
     console.log('CLAUDE_API_KEY starts with:', apiKey?.substring(0, 15) + '...');
     console.log('CLAUDE_API_KEY ends with:', '...' + apiKey?.substring(apiKey.length - 10));
     console.log('CLAUDE_API_KEY has whitespace?', apiKey ? /\s/.test(apiKey) : 'N/A');
+    console.log('Will use baseURL: https://api.anthropic.com (explicitly set to avoid Netlify proxy)');
     console.log('===========================\n');
 
     if (!apiKey) {
@@ -28,8 +31,11 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ API key loaded and will be used for Anthropic SDK');
 
+    // IMPORTANT: Netlify sets ANTHROPIC_BASE_URL to their proxy, which doesn't work
+    // We must explicitly override it to use the real Anthropic API
     const anthropic = new Anthropic({
       apiKey: apiKey,
+      baseURL: 'https://api.anthropic.com',
     });
     const body = await request.json();
     const { imageData, category } = body as {
