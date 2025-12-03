@@ -5,6 +5,7 @@ import { useStore } from '@/store/useStore';
 import { SoundCategory, CATEGORY_KEYS } from '@/lib/prompt';
 import { Dropdown } from './Dropdown';
 import { SoundControls } from './SoundControls';
+import { initializeAudio } from '@/lib/audioInit';
 
 type CellProps = {
   cellId: number;
@@ -36,6 +37,24 @@ export function Cell({ cellId }: CellProps) {
       updateCell(cellId, { category: randomCategory });
     }
   }, [cellId, cell.category, updateCell]);
+
+  // Pre-initialize AudioContext on first user interaction to eliminate keyboard latency
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      initializeAudio();
+      // Remove listeners after first interaction
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+    document.addEventListener('click', handleFirstInteraction);
+    document.addEventListener('keydown', handleFirstInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+  }, []);
 
   // Draw video to canvas with posterization
   useEffect(() => {

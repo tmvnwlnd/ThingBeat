@@ -7,6 +7,7 @@ import * as Tone from 'tone';
 import WaveSurfer from 'wavesurfer.js';
 import { VolumeSlider } from './VolumeSlider';
 import { SynthKeyboard } from './SynthKeyboard';
+import { startKeepAlive } from '@/lib/audioInit';
 
 type SoundControlsProps = {
   cellId: number;
@@ -135,6 +136,8 @@ export function SoundControls({
             if (semitone === 0) {
               console.log(`✅ Synth audio loaded for cell ${cellId}`);
               setAudioDuration(player.buffer.duration);
+              // Start keep-alive to prevent AudioContext suspension during idle
+              startKeepAlive();
             }
           },
         }).toDestination();
@@ -163,19 +166,13 @@ export function SoundControls({
       onload: () => {
         console.log(`✅ Audio loaded for cell ${cellId}`);
         setAudioDuration(player.buffer.duration);
+        // Start keep-alive to prevent AudioContext suspension during idle
+        startKeepAlive();
 
-        // Auto-start playback for looping categories
+        // Auto-start playback for looping categories (AudioContext pre-initialized)
         if (shouldLoop) {
-          if (Tone.Transport.state !== 'started') {
-            Tone.start().then(() => {
-              Tone.Transport.start();
-              player.start();
-              setIsPlaying(true);
-            });
-          } else {
-            player.start();
-            setIsPlaying(true);
-          }
+          player.start();
+          setIsPlaying(true);
         }
       },
     }).toDestination();
@@ -285,21 +282,16 @@ export function SoundControls({
         // Prevent key repeat
         if (e.repeat) return;
 
-        // Add to pressed keys for visual feedback
-        setPressedSynthKeys(prev => new Set(prev).add(key));
-
-        // Play the note (polyphonic mode - multiple notes can play at once)
+        // Play the note IMMEDIATELY (AudioContext pre-initialized on first interaction)
         const player = synthPlayersRef.current.get(semitone);
         if (player) {
-          if (Tone.Transport.state !== 'started') {
-            Tone.start().then(() => {
-              Tone.Transport.start();
-              player.start();
-            });
-          } else {
-            player.start();
-          }
+          player.start();
         }
+
+        // Update visual feedback AFTER audio starts (reduces latency)
+        requestAnimationFrame(() => {
+          setPressedSynthKeys(prev => new Set(prev).add(key));
+        });
       }
     };
 
@@ -336,18 +328,14 @@ export function SoundControls({
   const handleTrigger = () => {
     if (!playerRef.current) return;
 
-    // Trigger flash animation
-    setIsFlashing(true);
-    setTimeout(() => setIsFlashing(false), 100); // 0.1s flash
+    // Start audio IMMEDIATELY (AudioContext pre-initialized on first interaction)
+    playerRef.current.start();
 
-    if (Tone.Transport.state !== 'started') {
-      Tone.start().then(() => {
-        Tone.Transport.start();
-        playerRef.current?.start();
-      });
-    } else {
-      playerRef.current.start();
-    }
+    // Update visual feedback AFTER audio starts (reduces latency)
+    requestAnimationFrame(() => {
+      setIsFlashing(true);
+      setTimeout(() => setIsFlashing(false), 100); // 0.1s flash
+    });
   };
 
   // Store trigger function in ref for keyboard listener
