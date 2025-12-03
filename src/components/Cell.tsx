@@ -114,14 +114,38 @@ export function Cell({ cellId }: CellProps) {
     if (!smallCtx) return;
 
     // Draw the raw video to the smaller canvas (automatic downscaling)
-    // This captures FULL COLOR, not the posterized blue/white effect
+    // This captures FULL COLOR for Claude API
     smallCtx.drawImage(video, 0, 0, smallCanvas.width, smallCanvas.height);
 
     // Convert to JPEG with 70% quality (much smaller than PNG)
-    const snapshot = smallCanvas.toDataURL('image/jpeg', 0.7);
+    const snapshotForAPI = smallCanvas.toDataURL('image/jpeg', 0.7);
 
-    // Update cell to loading state and mark as generating
-    updateCell(cellId, { snapshot, state: 'loading' });
+    // Now create a POSTERIZED version for UI display
+    // Apply the same posterization effect as the live video
+    const imageData = smallCtx.getImageData(0, 0, smallCanvas.width, smallCanvas.height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      // Convert to grayscale
+      const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+
+      // Threshold to blue or white
+      if (gray > 128) {
+        data[i] = 255;     // R
+        data[i + 1] = 255; // G
+        data[i + 2] = 255; // B
+      } else {
+        data[i] = 38;      // R (0x26)
+        data[i + 1] = 0;   // G
+        data[i + 2] = 255; // B (0xFF)
+      }
+    }
+
+    smallCtx.putImageData(imageData, 0, 0);
+    const posterizedSnapshot = smallCanvas.toDataURL('image/jpeg', 0.7);
+
+    // Update cell to loading state with POSTERIZED snapshot for UI display
+    updateCell(cellId, { snapshot: posterizedSnapshot, state: 'loading' });
     useStore.getState().setIsGenerating(true);
 
     try {
@@ -129,13 +153,13 @@ export function Cell({ cellId }: CellProps) {
       console.log('Cell:', cellId);
       console.log('Category:', cell.category);
 
-      // Step 1: Describe the image using Claude
+      // Step 1: Describe the image using Claude (send RAW snapshot, not posterized)
       console.log('\n📸 Step 1: Sending image to Claude...');
       const describeResponse = await fetch('/api/describe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageData: snapshot,
+          imageData: snapshotForAPI,
           category: cell.category,
         }),
       });
