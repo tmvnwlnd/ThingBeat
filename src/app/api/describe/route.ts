@@ -7,16 +7,26 @@ export async function POST(request: NextRequest) {
     // Check API key at runtime
     const apiKey = process.env.CLAUDE_API_KEY;
 
+    console.log('\n🔍 === ENVIRONMENT DEBUG ===');
+    console.log('All env vars with "API":', Object.keys(process.env).filter(k => k.includes('API')));
+    console.log('All env vars with "CLAUDE":', Object.keys(process.env).filter(k => k.includes('CLAUDE')));
+    console.log('CLAUDE_API_KEY exists?', !!apiKey);
+    console.log('CLAUDE_API_KEY type:', typeof apiKey);
+    console.log('CLAUDE_API_KEY length:', apiKey?.length);
+    console.log('CLAUDE_API_KEY starts with:', apiKey?.substring(0, 15) + '...');
+    console.log('CLAUDE_API_KEY ends with:', '...' + apiKey?.substring(apiKey.length - 10));
+    console.log('CLAUDE_API_KEY has whitespace?', apiKey ? /\s/.test(apiKey) : 'N/A');
+    console.log('===========================\n');
+
     if (!apiKey) {
       console.error('❌ CLAUDE_API_KEY not found in environment variables');
-      console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('API')));
       return NextResponse.json(
         { error: 'Claude API key not configured. Please add CLAUDE_API_KEY to .env.local' },
         { status: 500 }
       );
     }
 
-    console.log('✅ API key loaded:', apiKey.substring(0, 10) + '...');
+    console.log('✅ API key loaded and will be used for Anthropic SDK');
 
     const anthropic = new Anthropic({
       apiKey: apiKey,
@@ -118,7 +128,17 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('\n❌ === ERROR in /api/describe ===');
-    console.error(error);
+    console.error('Error type:', typeof error);
+    console.error('Error status:', error?.status);
+    console.error('Error message:', error?.message);
+    console.error('Error name:', error?.name);
+    console.error('Full error object:', JSON.stringify(error, null, 2));
+    console.error('Error stack:', error?.stack);
+
+    // Log Anthropic-specific error details
+    if (error?.error) {
+      console.error('Anthropic error object:', JSON.stringify(error.error, null, 2));
+    }
     console.error('================================\n');
 
     // Extract user-friendly error message
@@ -132,7 +152,16 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: errorMessage, details: error?.error || error?.message },
+      {
+        error: errorMessage,
+        details: error?.error || error?.message,
+        status: error?.status,
+        debugInfo: {
+          errorType: typeof error,
+          hasError: !!error?.error,
+          hasMessage: !!error?.message,
+        }
+      },
       { status: error?.status || 500 }
     );
   }
