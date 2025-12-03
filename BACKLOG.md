@@ -211,7 +211,47 @@
 
 ## Feature Requests
 
-### 1. Community Board for Sharing Jams
+### 1. Background Queue for Sound Generation
+**Priority:** Medium
+**Description:** Allow users to queue multiple sound generations and continue using the app while sounds are being created.
+
+**Current Behavior:**
+- Click cell → App blocks until generation completes (7-14 seconds)
+- Cannot interact with other cells during generation
+- Must wait for one sound before creating another
+
+**Proposed Behavior:**
+- Click cell → Enters "queued" state immediately
+- User can continue exploring and playing with other cells
+- Process generations one at a time in background
+- Visual indicator shows queue progress (e.g., "2 sounds in queue")
+- Notification/flash when each sound completes
+- Option to cancel queued generations
+
+**Technical Requirements:**
+- Queue manager in Zustand store
+- Process one generation at a time (avoid parallel API calls)
+- Handle queue state (queued, generating, completed, failed)
+- Cancel/clear queue functionality
+- Persist queue across page refresh (optional)
+
+**UI/UX Considerations:**
+- Small badge showing queue position on cells
+- Global queue indicator in header ("3 sounds generating...")
+- Toast notifications for completion
+- Don't overwhelm user with too many simultaneous notifications
+
+**Files to modify**:
+- `src/store/useStore.ts` - Queue state management
+- `src/components/Cell.tsx` - Queue integration
+- `src/components/Header.tsx` - Global queue indicator
+- New: `src/lib/generationQueue.ts` - Queue processing logic
+
+**Estimated Scope**: Medium (2-3 days of development)
+
+---
+
+### 2. Community Board for Sharing Jams
 **Priority:** High (Big Feature)
 **Description:** Create a community platform where users can share their ThingBeat creations with others.
 
