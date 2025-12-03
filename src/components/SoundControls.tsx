@@ -63,7 +63,6 @@ export function SoundControls({
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const synthPlayersRef = useRef<Map<number, Tone.Player>>(new Map());
-  const currentNoteRef = useRef<{ player: Tone.Player; semitone: number } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
@@ -73,10 +72,50 @@ export function SoundControls({
   const [pressedSynthKeys, setPressedSynthKeys] = useState<Set<string>>(new Set());
   const updateCell = useStore((state) => state.updateCell);
   const muteAll = useStore((state) => state.settings.muteAll);
-  const synthMonophonic = useStore((state) => state.settings.synthMonophonic);
+  const settings = useStore((state) => state.settings);
+  const cell = useStore((state) => state.cells.find(c => c.id === cellId));
 
   // Determine if this category should auto-loop
   const shouldLoop = category === 'drum_loop' || category === 'texture' || category === 'lead_line';
+
+  // Calculate BPM playback rate adjustment for rhythm-based categories
+  const calculateBPMPlaybackRate = (): number => {
+    if (!cell?.originalBPM) return 1.0;
+    if (category !== 'drum_loop' && category !== 'lead_line') return 1.0;
+    return settings.bpm / cell.originalBPM;
+  };
+
+  // Calculate key transposition (semitone shift) using closest path
+  const calculateKeyTransposition = (): number => {
+    if (!cell?.originalKey) return 0;
+    if (category !== 'lead_line' && category !== 'synth_timbre') return 0;
+
+    const keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+    // Extract root notes (ignore major/minor)
+    const originalRoot = cell.originalKey.split(' ')[0];
+    const currentRoot = settings.key.split(' ')[0];
+
+    const originalIndex = keys.indexOf(originalRoot);
+    const currentIndex = keys.indexOf(currentRoot);
+
+    if (originalIndex === -1 || currentIndex === -1) return 0;
+
+    // Calculate semitone difference
+    let semitones = currentIndex - originalIndex;
+
+    // Find closest path (up or down)
+    if (semitones > 6) {
+      semitones -= 12; // Go down instead
+    } else if (semitones < -6) {
+      semitones += 12; // Go up instead
+    }
+
+    return semitones;
+  };
+
+  const bpmPlaybackRate = calculateBPMPlaybackRate();
+  const keyTranspositionSemitones = calculateKeyTransposition();
 
   // Initialize Tone.js Player
   useEffect(() => {
@@ -85,11 +124,13 @@ export function SoundControls({
     // For synth, create 13 players (one for each semitone)
     if (category === 'synth_timbre') {
       Object.values(SYNTH_KEY_MAP).forEach((semitone) => {
+        // Apply key transposition: combine keyboard semitone + global key transposition
+        const totalSemitones = semitone + keyTranspositionSemitones;
         const player = new Tone.Player({
           url: audioUrl,
           loop: false,
           volume: Tone.gainToDb(volume),
-          playbackRate: Math.pow(2, semitone / 12), // Pitch shift formula
+          playbackRate: Math.pow(2, totalSemitones / 12), // Pitch shift formula
           onload: () => {
             if (semitone === 0) {
               console.log(`✅ Synth audio loaded for cell ${cellId}`);
@@ -111,10 +152,14 @@ export function SoundControls({
     }
 
     // For other categories, use single player
+    // Calculate combined playback rate (BPM adjustment * pitch shift for key)
+    const combinedPlaybackRate = bpmPlaybackRate * Math.pow(2, keyTranspositionSemitones / 12);
+
     const player = new Tone.Player({
       url: audioUrl,
       loop: shouldLoop,
       volume: Tone.gainToDb(volume),
+      playbackRate: combinedPlaybackRate,
       onload: () => {
         console.log(`✅ Audio loaded for cell ${cellId}`);
         setAudioDuration(player.buffer.duration);
@@ -141,7 +186,7 @@ export function SoundControls({
       player.stop();
       player.dispose();
     };
-  }, [audioUrl, cellId, shouldLoop, category, volume]);
+  }, [audioUrl, cellId, shouldLoop, category, volume, bpmPlaybackRate, keyTranspositionSemitones]);
 
   // Update volume
   useEffect(() => {
@@ -164,18 +209,6 @@ export function SoundControls({
       playerRef.current.mute = muteAll;
     }
   }, [muteAll, category]);
-
-  // Handle synth mode changes (mono/poly switching)
-  useEffect(() => {
-    if (category !== 'synth_timbre') return;
-
-    // When switching modes, stop all playing notes and reset state
-    synthPlayersRef.current.forEach((player) => {
-      player.stop();
-    });
-    currentNoteRef.current = null;
-    setPressedSynthKeys(new Set());
-  }, [synthMonophonic, category]);
 
   // Initialize WaveSurfer for waveform visualization
   useEffect(() => {
@@ -255,29 +288,16 @@ export function SoundControls({
         // Add to pressed keys for visual feedback
         setPressedSynthKeys(prev => new Set(prev).add(key));
 
-        // If monophonic mode, stop the currently playing note
-        if (synthMonophonic && currentNoteRef.current) {
-          currentNoteRef.current.player.stop();
-        }
-
-        // Play the note
+        // Play the note (polyphonic mode - multiple notes can play at once)
         const player = synthPlayersRef.current.get(semitone);
         if (player) {
           if (Tone.Transport.state !== 'started') {
             Tone.start().then(() => {
               Tone.Transport.start();
               player.start();
-              // Store reference for monophonic mode
-              if (synthMonophonic) {
-                currentNoteRef.current = { player, semitone };
-              }
             });
           } else {
             player.start();
-            // Store reference for monophonic mode
-            if (synthMonophonic) {
-              currentNoteRef.current = { player, semitone };
-            }
           }
         }
       }
@@ -294,12 +314,6 @@ export function SoundControls({
           newSet.delete(key);
           return newSet;
         });
-
-        // If monophonic mode, stop the note when key is released
-        if (synthMonophonic && currentNoteRef.current?.semitone === semitone) {
-          currentNoteRef.current.player.stop();
-          currentNoteRef.current = null;
-        }
       }
     };
 
@@ -309,7 +323,7 @@ export function SoundControls({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [category, synthMonophonic]);
+  }, [category]);
 
   const handleVolumeChange = (newVolume: number) => {
     updateCell(cellId, { volume: newVolume });

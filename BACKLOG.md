@@ -38,18 +38,15 @@
 ---
 
 ### 4. Drum Loop Cost Optimization
-**Priority:** Medium
-**Description:** Currently generating full-length drum loops. Could save costs by generating half the intended duration and looping it.
+**Priority:** ~~Medium~~ **COMPLETED** ✅
+**Description:** ~~Currently generating full-length drum loops. Could save costs by generating half the intended duration and looping it.~~
 
-**Proposed Solution:**
-- Generate drum loops at half the intended time (e.g., 2 bars instead of 4)
-- Double/loop the audio on the client side to create the full loop
-- This reduces ElevenLabs API costs for looping content
+**Status:** Already implemented in MVP! Drum loops are generated at half duration and looped seamlessly on playback.
 
-**Implementation Notes:**
-- Only apply to `drum_loop` category
-- May need to adjust duration_seconds calculation in `/src/app/api/generate-audio/route.ts`
-- Use Tone.js to seamlessly loop the shorter audio
+**Implementation:**
+- ✅ Generate drum loops at half duration in `src/lib/sfx.ts:44-45`
+- ✅ Auto-loop on playback in `src/components/SoundControls.tsx:77,114`
+- ✅ Saves 50% on ElevenLabs API costs for drum loops
 
 ---
 
@@ -217,6 +214,49 @@
 8. User profiles
 
 **Estimated Scope**: Large (2-4 weeks of development)
+
+---
+
+### 2. MIDI Controller Support
+**Priority:** Medium
+**Description:** Add support for MIDI controllers to play and control ThingBeat sounds with external hardware.
+
+**Proposed Features**:
+- Detect and connect to MIDI devices via Web MIDI API
+- Map MIDI notes to trigger sounds (especially for synths and drum one-shots)
+- Map MIDI velocity to volume
+- MIDI learn for custom key mappings
+- Display connected MIDI devices in UI
+- Support for MIDI CC (continuous controllers) for volume, effects, etc.
+- Configurable MIDI channel selection
+
+**Affected Components**:
+- **Synth keyboard**: Play synth sounds with MIDI keyboard
+- **Drum one-shots**: Trigger drum hits with MIDI pads/keys
+- **Looping sounds**: Start/stop loops with MIDI triggers
+- **Volume controls**: Map MIDI CC to cell volumes
+
+**Technical Requirements**:
+- Use Web MIDI API (browser support: Chrome, Edge, Opera)
+- Handle MIDI device connection/disconnection events
+- Store MIDI mappings in local storage or settings
+- Add MIDI settings panel to UI
+- Consider MIDI clock sync for BPM synchronization
+
+**Implementation Notes**:
+- Web MIDI API requires HTTPS
+- Not supported in Firefox or Safari (need fallback message)
+- Consider using a library like `webmidi.js` for easier MIDI handling
+- Map MIDI note 60 (C4) to the synth's root note by default
+- Allow custom octave shifting for different MIDI keyboards
+
+**Files to modify/create**:
+- New: `src/lib/midi.ts` - MIDI handling logic
+- `src/components/SoundControls.tsx` - Add MIDI trigger support
+- `src/components/Header.tsx` - MIDI settings/device selector
+- `src/store/useStore.ts` - Store MIDI configuration
+
+**Estimated Scope**: Medium (1-2 weeks of development)
 
 ---
 

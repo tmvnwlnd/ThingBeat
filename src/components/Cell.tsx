@@ -165,9 +165,17 @@ export function Cell({ cellId }: CellProps) {
       });
 
       if (!describeResponse.ok) {
-        const errorData = await describeResponse.json();
+        let errorData;
+        try {
+          errorData = await describeResponse.json();
+        } catch (e) {
+          // Response wasn't JSON, get text instead
+          const errorText = await describeResponse.text();
+          console.error('❌ /api/describe failed (non-JSON response):', errorText);
+          throw new Error(`Failed to describe image: ${errorText.substring(0, 100)}`);
+        }
         console.error('❌ /api/describe failed:', errorData);
-        throw new Error('Failed to describe image');
+        throw new Error(errorData.error || 'Failed to describe image');
       }
 
       const { descriptor } = await describeResponse.json();
@@ -205,9 +213,12 @@ export function Cell({ cellId }: CellProps) {
       console.log('✅ Step 2 complete! Audio generated');
 
       // Update cell to ready state with audio
+      // Store the BPM and key that were used to generate this sound
       updateCell(cellId, {
         audioUrl,
         state: 'ready',
+        originalBPM: settings.bpm,
+        originalKey: settings.key,
       });
 
       // If this is a synth, mark that we have one

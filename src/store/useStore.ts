@@ -12,6 +12,8 @@ export type CellData = {
   llmDescriptor: string | null;
   volume: number; // 0-1
   error: string | null;
+  originalBPM: number | null; // BPM when sound was generated (for playback rate adjustment)
+  originalKey: string | null; // Key when sound was generated (for transposition)
 };
 
 type GlobalSettings = {
@@ -19,7 +21,6 @@ type GlobalSettings = {
   key: string;
   loopLength: number; // in bars
   muteAll: boolean;
-  synthMonophonic: boolean; // true = monophonic, false = polyphonic
 };
 
 export type ExportState = 'idle' | 'waiting' | 'recording' | 'processing';
@@ -60,6 +61,8 @@ const initialCell = (id: number): CellData => ({
   llmDescriptor: null,
   volume: 0.8,
   error: null,
+  originalBPM: null,
+  originalKey: null,
 });
 
 export const useStore = create<Store>((set) => ({
@@ -69,7 +72,6 @@ export const useStore = create<Store>((set) => ({
     key: 'C',
     loopLength: 4,
     muteAll: false,
-    synthMonophonic: false,
   },
   updateSettings: (newSettings) =>
     set((state) => ({

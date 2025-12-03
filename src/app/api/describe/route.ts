@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
     console.log('CLAUDE_API_KEY exists?', !!apiKey);
     console.log('CLAUDE_API_KEY type:', typeof apiKey);
     console.log('CLAUDE_API_KEY length:', apiKey?.length);
-    console.log('CLAUDE_API_KEY starts with:', apiKey?.substring(0, 15) + '...');
-    console.log('CLAUDE_API_KEY ends with:', '...' + apiKey?.substring(apiKey.length - 10));
+    console.log('CLAUDE_API_KEY starts with:', apiKey ? apiKey.substring(0, 15) + '...' : 'N/A');
+    console.log('CLAUDE_API_KEY ends with:', apiKey ? '...' + apiKey.substring(apiKey.length - 10) : 'N/A');
     console.log('CLAUDE_API_KEY has whitespace?', apiKey ? /\s/.test(apiKey) : 'N/A');
     console.log('Will use baseURL: https://api.anthropic.com (explicitly set to avoid Netlify proxy)');
     console.log('===========================\n');

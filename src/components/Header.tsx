@@ -18,6 +18,9 @@ export function Header() {
   const keyIndex = keys.indexOf(settings.key.split(' ')[0]);
   const isMinor = settings.key.includes('minor');
 
+  // Disable loop length controls after any sound has been generated
+  const anySoundsGenerated = cells.some(cell => cell.state === 'ready');
+
   const incrementLoopLength = () => {
     const lengths = [1, 2, 4, 8, 16];
     const currentIndex = lengths.indexOf(settings.loopLength);
@@ -66,10 +69,6 @@ export function Header() {
 
   const toggleMuteAll = () => {
     updateSettings({ muteAll: !settings.muteAll });
-  };
-
-  const toggleSynthMode = () => {
-    updateSettings({ synthMonophonic: !settings.synthMonophonic });
   };
 
   const handleExport = async () => {
@@ -178,14 +177,18 @@ export function Header() {
             <div className="flex items-center gap-4">
               <button
                 onClick={decrementLoopLength}
-                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+                disabled={anySoundsGenerated}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-thingbeat-white"
+                title={anySoundsGenerated ? "Cannot change bars after generating sounds" : "Decrease bars"}
               >
                 <span className="text-sm leading-none">-</span>
               </button>
               <span className="text-[20px] text-thingbeat-white w-4 text-center">{settings.loopLength}</span>
               <button
                 onClick={incrementLoopLength}
-                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+                disabled={anySoundsGenerated}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-thingbeat-white"
+                title={anySoundsGenerated ? "Cannot change bars after generating sounds" : "Increase bars"}
               >
                 <span className="text-sm leading-none">+</span>
               </button>
@@ -218,14 +221,18 @@ export function Header() {
             <div className="flex items-center gap-4">
               <button
                 onClick={decrementKey}
-                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+                disabled={anySoundsGenerated}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-thingbeat-white"
+                title={anySoundsGenerated ? "Cannot change key after generating sounds" : "Decrease key"}
               >
                 <span className="text-sm leading-none">-</span>
               </button>
               <span className="text-[20px] text-thingbeat-white w-4 text-center">{keys[keyIndex]}</span>
               <button
                 onClick={incrementKey}
-                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue"
+                disabled={anySoundsGenerated}
+                className="w-6 h-6 border-2 border-thingbeat-white flex items-center justify-center text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-thingbeat-white"
+                title={anySoundsGenerated ? "Cannot change key after generating sounds" : "Increase key"}
               >
                 <span className="text-sm leading-none">+</span>
               </button>
@@ -233,21 +240,25 @@ export function Header() {
             <div className="flex">
               <button
                 onClick={setMajor}
+                disabled={anySoundsGenerated}
                 className={`px-1 h-6 text-sm ${
                   !isMinor
                     ? 'bg-thingbeat-white text-thingbeat-blue'
                     : 'bg-thingbeat-blue text-thingbeat-white border-2 border-thingbeat-white'
-                }`}
+                } disabled:opacity-30 disabled:cursor-not-allowed`}
+                title={anySoundsGenerated ? "Cannot change key after generating sounds" : "Set to major key"}
               >
                 Major
               </button>
               <button
                 onClick={setMinor}
+                disabled={anySoundsGenerated}
                 className={`px-1 h-6 text-sm hover:border-3 ${
                   isMinor
                     ? 'bg-thingbeat-white text-thingbeat-blue'
                     : 'bg-thingbeat-blue text-thingbeat-white border-2 border-thingbeat-white'
-                }`}
+                } disabled:opacity-30 disabled:cursor-not-allowed`}
+                title={anySoundsGenerated ? "Cannot change key after generating sounds" : "Set to minor key"}
               >
                 Minor
               </button>
@@ -266,19 +277,6 @@ export function Header() {
               className="w-20 h-20"
             />
           </button>
-
-          {/* Synth Mode Toggle */}
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={settings.synthMonophonic}
-                onChange={toggleSynthMode}
-                className="w-4 h-4 cursor-pointer accent-white"
-              />
-              <span className="text-sm text-thingbeat-white font-silkscreen">Mono Synth</span>
-            </label>
-          </div>
         </div>
 
         {/* Export Button */}
