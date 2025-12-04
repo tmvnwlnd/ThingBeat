@@ -10,19 +10,22 @@ export const initializeAudio = async () => {
   if (audioInitialized) return;
 
   try {
+    // Cast to any to access AudioContext properties not in BaseContext type
+    const ctx = Tone.context as any;
+
     // Configure low-latency settings BEFORE starting
-    Tone.context.latencyHint = 'interactive'; // Lowest latency mode
-    Tone.context.lookAhead = 0.01; // Look ahead 10ms (default is 0.1s)
+    ctx.latencyHint = 'interactive'; // Lowest latency mode
+    ctx.lookAhead = 0.01; // Look ahead 10ms (default is 0.1s)
 
     await Tone.start();
     await Tone.Transport.start();
 
     console.log('✅ Audio context initialized with low latency settings');
     console.log('   - Context state:', Tone.context.state);
-    console.log('   - Base latency:', Tone.context.baseLatency);
-    console.log('   - Output latency:', Tone.context.outputLatency);
-    console.log('   - Latency hint:', Tone.context.latencyHint);
-    console.log('   - Look ahead:', Tone.context.lookAhead);
+    console.log('   - Base latency:', ctx.baseLatency);
+    console.log('   - Output latency:', ctx.outputLatency);
+    console.log('   - Latency hint:', ctx.latencyHint);
+    console.log('   - Look ahead:', ctx.lookAhead);
 
     audioInitialized = true;
   } catch (error) {
