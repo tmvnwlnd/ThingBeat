@@ -7,7 +7,7 @@ import { Dropdown } from './Dropdown';
 import { SoundControls } from './SoundControls';
 import { initializeAudio } from '@/lib/audioInit';
 
-type CellProps = {
+type CellDitheredProps = {
   cellId: number;
 };
 
@@ -173,7 +173,7 @@ void main() {
 }
 `;
 
-export function Cell({ cellId }: CellProps) {
+export function CellDithered({ cellId }: CellDitheredProps) {
   const cell = useStore((state) => state.cells[cellId]);
   const updateCell = useStore((state) => state.updateCell);
   const videoStream = useStore((state) => state.videoStream);
@@ -396,7 +396,19 @@ export function Cell({ cellId }: CellProps) {
       return;
     }
 
+    // Create offscreen canvas for dithered snapshot
+    const ditheredCanvas = document.createElement('canvas');
+    ditheredCanvas.width = 400;
+    ditheredCanvas.height = 225;
+    const ditheredGl = ditheredCanvas.getContext('webgl');
+
+    if (!ditheredGl) {
+      console.error('Failed to create WebGL context for snapshot');
+      return;
+    }
+
     // Apply the same shader to create dithered snapshot
+    // (This is a simplified approach - in production, you'd reuse the shader setup)
     // For now, we'll use the main canvas and capture it
     const posterizedSnapshot = canvasRef.current?.toDataURL('image/jpeg', 0.7) || snapshotForAPI;
 

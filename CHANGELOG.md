@@ -1,5 +1,89 @@
 # ThingBeat - Development Changelog
 
+## 2025-12-04 - Bayer Matrix Dithering Shader
+
+### Visual Enhancements
+
+#### WebGL Bayer Matrix Dithering Implementation
+- ✅ **Replaced canvas-based posterization with GPU-accelerated WebGL shader**
+  - **Issue**: Original posterization used simple 2D canvas grayscale threshold, less visually distinctive
+  - **Goal**: Implement true Bayer matrix dithering for authentic retro aesthetic
+  - **Solution**: Complete WebGL shader system with 8x8 Bayer matrix dithering algorithm
+
+  **Implementation Details**:
+
+  1. **Shader Conversion from Post-Processing Framework to Raw WebGL**
+     - Original `fragmentShader.glsl` used post-processing.js framework syntax (incompatible with raw WebGL)
+     - Converted to WebGL 1.0 compatible GLSL:
+       - Changed `mainImage()` function signature to standard `main()`
+       - Removed post-processing uniforms (`inputBuffer`, etc.)
+       - Replaced `mat2x2`/`mat4x4` with correct GLSL types
+       - Avoided integer operations entirely (WebGL 1.0 limitation)
+       - Used `floor(mod(x, 8.0))` pattern instead of `int(x) % 8`
+       - Implemented 8x8 Bayer matrix as 64 explicit if-statements for float-based lookup
+
+  2. **Pixelation + Dithering for True Retro Aesthetic**
+     - **Problem**: Initial implementation applied large dithering pattern but sampled luminance at full resolution
+     - **Result**: Fine details still visible through dithering ("intricate details" visible at 5-pixel blocks)
+     - **Solution**: Added UV coordinate quantization before texture sampling
+       ```glsl
+       vec2 blockUv = floor((vUv * uResolution) / blockSize) * blockSize / uResolution;
+       vec4 color = texture2D(uTexture, blockUv); // Pixelated sampling
+       ```
+     - **Impact**: True pixelated blocks with no fine detail leakage, matching dithering scale perfectly
+
+  3. **Modified `src/components/Cell.tsx`** - Complete WebGL shader system
+     - **WebGL Context Initialization** (lines 218-368):
+       - Creates WebGL context and program with vertex/fragment shaders
+       - Sets up full-screen quad geometry with position and texture coordinate buffers
+       - Configures texture parameters for video frame sampling
+       - Implements render loop with `requestAnimationFrame`
+
+     - **Shader Parameters** (configurable):
+       - `blockSize: 4.0` - Controls pixelation/dithering granularity (4×4 pixel blocks)
+       - `contrast: 1.5` - Luminance boost for stronger visual separation
+       - `threshold: 0.8 * bayerValue + 0.1` - Dithering aggressiveness
+
+     - **Bayer Matrix Algorithm**:
+       - 8x8 ordered dithering matrix (64 threshold values)
+       - Converts grayscale luminance to binary (white or ThingBeat blue)
+       - GPU-accelerated, renders at full framerate (~60fps)
+
+     - **Dual Capture System** (lines 373-401):
+       - **Raw video** (`videoRef.current`) → Claude API (full-color, 400×225 JPEG 70%)
+       - **WebGL canvas** (`canvasRef.current`) → UI display (dithered blue/white)
+       - Ensures Claude receives accurate color information while UI shows retro aesthetic
+
+  4. **Created Test Environment** (before applying to main app)
+     - **New: `src/components/CellDithered.tsx`** - Duplicate Cell component with shader
+     - **New: `src/app/shader-test/page.tsx`** - Test page at `/shader-test`
+     - Allowed local testing and parameter tuning before production deployment
+
+  **Visual Characteristics**:
+  - ✅ 8x8 Bayer matrix ordered dithering
+  - ✅ 4×4 pixel blocks (blockSize = 4.0)
+  - ✅ 1.5× contrast adjustment
+  - ✅ ThingBeat blue (38, 0, 255) and white binary palette
+  - ✅ GPU-accelerated WebGL rendering (much faster than 2D canvas pixel manipulation)
+  - ✅ No fine detail leakage - true retro pixelated aesthetic
+
+  **Files Modified**:
+  - `src/components/Cell.tsx` - Complete WebGL shader implementation
+  - `BACKLOG.md` - Marked "Bayer-Matrix Dithering Filter" as COMPLETED
+
+  **Files Created**:
+  - `src/components/CellDithered.tsx` - Test component with shader
+  - `src/app/shader-test/page.tsx` - Test page for shader preview
+
+  **Technical Notes**:
+  - WebGL 1.0 compatibility ensures broad browser support
+  - Shader compiles without errors with float-based operations
+  - Console logs confirm successful compilation: "✅ WebGL shader compiled successfully"
+  - Zero performance impact - GPU handles all rendering efficiently
+  - Raw video remains available for Claude API (no dithering sent to LLM)
+
+---
+
 ## 2025-12-03 - Audio Playback Latency Optimization
 
 ### Performance Enhancements

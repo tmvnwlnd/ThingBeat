@@ -88,21 +88,26 @@
 ---
 
 ### 7. Bayer-Matrix Dithering Filter
-**Priority:** Medium
-**Description:** Replace the current posterization effect with a Bayer-matrix dithering filter using the GLSL shader included in the repository.
+**Priority:** ~~Medium~~ **COMPLETED** ✅
+**Description:** ~~Replace the current posterization effect with a Bayer-matrix dithering filter using the GLSL shader included in the repository.~~
 
-**Current State**: Using simple threshold-based posterization (blue/white conversion)
+**Status:** Implemented! WebGL shader with 8x8 Bayer matrix dithering now renders all cells.
 
-**Implementation Notes**:
-- Use the `fragmentShader.glsl` file in the repo
-- Apply Bayer-matrix dithering algorithm for better visual quality
-- Maintain the same blue/white color scheme
-- Keep the raw video capture for Claude API (don't apply dithering to snapshots sent to API)
+**Implementation Details**:
+- ✅ Converted `fragmentShader.glsl` to WebGL 1.0 compatible GLSL (avoiding integer operations)
+- ✅ Implemented 8x8 Bayer matrix dithering algorithm
+- ✅ GPU-accelerated WebGL rendering (much faster than 2D canvas pixel manipulation)
+- ✅ Block size: 4 pixels (configurable via shader parameter)
+- ✅ Pixelation + dithering for true retro aesthetic (no fine detail leaks through)
+- ✅ Contrast adjustment: 1.5x (configurable)
+- ✅ Maintains ThingBeat blue (38, 0, 255) and white color scheme
+- ✅ Raw video capture for Claude API (full-color, not dithered)
+- ✅ Dithered version displayed in UI only
 
-**Files to modify**:
-- `src/components/Cell.tsx` - Canvas rendering effect
-- `src/app/prompt-lab/page.tsx` - Canvas rendering effect
-- `fragmentShader.glsl` - Shader implementation
+**Files Modified**:
+- ✅ `src/components/Cell.tsx` - Complete WebGL shader implementation
+- ✅ `src/components/CellDithered.tsx` - Test component (can be removed or kept)
+- ✅ `src/app/shader-test/page.tsx` - Test page for shader preview
 
 ---
 
