@@ -47,9 +47,41 @@
 
 ---
 
+### 5. Cancel Button Doesn't Actually Cancel API Requests
+**Priority:** High
+**Description:** When clicking the cancel button during sound generation, the cell resets to idle state but the API requests (Claude Vision and ElevenLabs) continue running in the background. When the generated sound eventually returns, the cell turns completely blue and stops working.
+
+**Current Behavior:**
+- User clicks record button → API requests start
+- User clicks cancel → Cell resets to idle visually
+- Background API requests continue running
+- When sound generation completes → Cell receives the response
+- Cell state becomes corrupted (blue screen, non-functional)
+
+**Root Cause:**
+- Cancel button only resets cell state locally (`resetCell()`)
+- No AbortController or request cancellation mechanism
+- Async handlers still process responses even after cell reset
+
+**Potential Solutions:**
+- Implement AbortController for fetch requests
+- Add request ID tracking to ignore stale responses
+- Cancel both Claude and ElevenLabs API calls on cancel
+- Check cell state before applying API responses
+- Add request cancellation in API route handlers (if possible)
+
+**Files to investigate**:
+- `src/components/Cell.tsx` - handleCellClick and cancel button handler
+- `src/app/api/describe/route.ts` - Claude Vision endpoint
+- `src/app/api/generate-audio/route.ts` - ElevenLabs endpoint
+
+**Impact:** High - causes cell to become unusable until page refresh
+
+---
+
 ## Enhancements
 
-### 5. Improve LLM Prompts for Better Sound Descriptions
+### 1. Improve LLM Prompts for Better Sound Descriptions
 **Priority:** Medium
 **Description:** Refine the Claude Vision prompts to generate more accurate and creative sound descriptors.
 
@@ -67,7 +99,7 @@
 
 ---
 
-### 6. Export Performance as MP3
+### 2. Export Performance as MP3
 **Priority:** Medium
 **Description:** Change the export format from WebM to MP3 for better compatibility and smaller file size.
 
@@ -87,7 +119,7 @@
 
 ---
 
-### 7. Bayer-Matrix Dithering Filter
+### 3. Bayer-Matrix Dithering Filter
 **Priority:** ~~Medium~~ **COMPLETED** ✅
 **Description:** ~~Replace the current posterization effect with a Bayer-matrix dithering filter using the GLSL shader included in the repository.~~
 
@@ -111,7 +143,7 @@
 
 ---
 
-### 8. Reverse Button for Textures
+### 4. Reverse Button for Textures
 **Priority:** Medium
 **Description:** Add a reverse button that plays texture sounds backwards for creative ambient effects.
 
@@ -144,7 +176,7 @@
 
 ---
 
-### 9. Dynamic BPM Adjustment for Generated Sounds
+### 5. Dynamic BPM Adjustment for Generated Sounds
 **Priority:** ~~High~~ **COMPLETED** ✅
 **Description:** ~~When BPM is changed after sounds have been generated, automatically speed up or slow down drum loops and melodies to match the new BPM.~~
 
@@ -168,7 +200,7 @@
 
 ---
 
-### 10. Dynamic Key Transposition for Melodies
+### 6. Dynamic Key Transposition for Melodies
 **Priority:** ~~High~~ **ON HOLD** ⏸️
 **Description:** ~~When the key is changed after a melody has been generated, automatically transpose the melody to match the new key.~~
 
@@ -192,7 +224,7 @@
 
 ---
 
-### 11. Synth Keyboard Transposition
+### 7. Synth Keyboard Transposition
 **Priority:** ~~High~~ **ON HOLD** ⏸️
 **Description:** ~~When the key is changed in global settings, transpose the synth keyboard to match the new key.~~
 
@@ -298,7 +330,7 @@
 
 ---
 
-### 2. MIDI Controller Support
+### 3. MIDI Controller Support
 **Priority:** Medium
 **Description:** Add support for MIDI controllers to play and control ThingBeat sounds with external hardware.
 

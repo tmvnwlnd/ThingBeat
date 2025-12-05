@@ -390,15 +390,25 @@ export function Cell({ cellId }: CellProps) {
     const gl = glRef.current;
     const program = programRef.current;
     const texture = textureRef.current;
+    const canvas = canvasRef.current;
 
-    if (!gl || !program || !texture) {
+    if (!gl || !program || !texture || !canvas) {
       console.error('WebGL not initialized');
       return;
     }
 
-    // Apply the same shader to create dithered snapshot
-    // For now, we'll use the main canvas and capture it
-    const posterizedSnapshot = canvasRef.current?.toDataURL('image/jpeg', 0.7) || snapshotForAPI;
+    // Force render one complete frame before capturing
+    if (video.readyState >= video.HAVE_CURRENT_DATA) {
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    // Now capture the rendered canvas
+    const posterizedSnapshot = canvas.toDataURL('image/jpeg', 0.7);
 
     // Update cell to loading state with DITHERED snapshot for UI display
     updateCell(cellId, { snapshot: posterizedSnapshot, state: 'loading' });
