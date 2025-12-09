@@ -1,5 +1,6 @@
 import { Header } from '@/components/Header';
 import { CameraGrid } from '@/components/CameraGrid';
+import { RecordingActionsModal } from '@/components/RecordingActionsModal';
 
 export default function Home() {
   return (
@@ -8,6 +9,7 @@ export default function Home() {
       <div className="p-2">
         <CameraGrid />
       </div>
+      <RecordingActionsModal />
     </main>
   );
 }
