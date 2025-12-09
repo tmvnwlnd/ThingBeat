@@ -16,11 +16,6 @@ export function RecordingActionsModal() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
 
-  // Only show modal when recordingState is 'ready'
-  if (recordingState !== 'ready' || !recordingData.recordingBlob) {
-    return null;
-  }
-
   // Create audio URL from blob
   useEffect(() => {
     if (recordingData.recordingBlob && !audioUrlRef.current) {
@@ -133,6 +128,11 @@ export function RecordingActionsModal() {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // Only show modal when recordingState is 'ready'
+  if (recordingState !== 'ready' || !recordingData.recordingBlob) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
