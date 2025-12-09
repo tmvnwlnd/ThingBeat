@@ -135,10 +135,34 @@ export const useStore = create<Store>((set) => ({
     zipBlob: null,
   },
   setRecordingData: (data) =>
-    set((state) => ({
-      recordingData: { ...state.recordingData, ...data },
-    })),
-  clearRecordingData: () =>
+    set((state) => {
+      const newRecordingData = { ...state.recordingData, ...data };
+
+      // Save to localStorage (convert blobs to data URLs)
+      if (typeof window !== 'undefined' && (data.recordingBlob || data.zipBlob)) {
+        Promise.all([
+          newRecordingData.recordingBlob ? blobToDataURL(newRecordingData.recordingBlob) : Promise.resolve(null),
+          newRecordingData.zipBlob ? blobToDataURL(newRecordingData.zipBlob) : Promise.resolve(null),
+        ]).then(([recordingDataURL, zipDataURL]) => {
+          const dataToStore = {
+            recordingDataURL,
+            snapshots: newRecordingData.snapshots,
+            zipDataURL,
+          };
+          localStorage.setItem('thingbeat_recording', JSON.stringify(dataToStore));
+        }).catch(error => {
+          console.error('Failed to save recording to localStorage:', error);
+        });
+      }
+
+      return { recordingData: newRecordingData };
+    }),
+  clearRecordingData: () => {
+    // Remove from localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('thingbeat_recording');
+    }
+
     set({
       recordingData: {
         recordingBlob: null,
@@ -146,5 +170,53 @@ export const useStore = create<Store>((set) => ({
         zipBlob: null,
       },
       recordingState: 'idle',
-    }),
+    });
+  },
 }));
+
+// Helper function to convert Blob to data URL
+function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Helper function to convert data URL to Blob
+function dataURLToBlob(dataURL: string): Promise<Blob> {
+  return fetch(dataURL).then(r => r.blob());
+}
+
+// Load recording data from localStorage on initialization
+if (typeof window !== 'undefined') {
+  const storedRecording = localStorage.getItem('thingbeat_recording');
+  if (storedRecording) {
+    try {
+      const data = JSON.parse(storedRecording);
+
+      // Convert data URLs back to blobs
+      Promise.all([
+        data.recordingDataURL ? dataURLToBlob(data.recordingDataURL) : null,
+        data.zipDataURL ? dataURLToBlob(data.zipDataURL) : null,
+      ]).then(([recordingBlob, zipBlob]) => {
+        if (recordingBlob) {
+          useStore.setState({
+            recordingData: {
+              recordingBlob,
+              snapshots: data.snapshots || Array(9).fill(null),
+              zipBlob,
+            },
+          });
+        }
+      }).catch(error => {
+        console.error('Failed to restore recording from localStorage:', error);
+        localStorage.removeItem('thingbeat_recording');
+      });
+    } catch (error) {
+      console.error('Failed to parse stored recording:', error);
+      localStorage.removeItem('thingbeat_recording');
+    }
+  }
+}

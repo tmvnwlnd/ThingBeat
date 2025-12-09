@@ -11,6 +11,8 @@ export function Header() {
   const recordingState = useStore((state) => state.recordingState);
   const setRecordingState = useStore((state) => state.setRecordingState);
   const setRecordingData = useStore((state) => state.setRecordingData);
+  const recordingData = useStore((state) => state.recordingData);
+  const clearRecordingData = useStore((state) => state.clearRecordingData);
   const cells = useStore((state) => state.cells);
 
   const recorderRef = useRef<Tone.Recorder | null>(null);
@@ -71,6 +73,31 @@ export function Header() {
   const toggleMuteAll = () => {
     updateSettings({ muteAll: !settings.muteAll });
   };
+
+  const handleCompactDelete = () => {
+    clearRecordingData();
+  };
+
+  const handleCompactDownload = () => {
+    if (!recordingData.zipBlob) return;
+
+    const url = URL.createObjectURL(recordingData.zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `thingbeat_recording_${Date.now()}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCompactShare = () => {
+    // TODO: Open submission modal in Phase 3
+    console.log('Share button clicked from compact controls');
+    alert('Share to gallery feature coming in Phase 3!');
+  };
+
+  const hasRecording = recordingData.recordingBlob !== null && recordingState === 'idle';
 
   const handleRecord = async () => {
     if (recordingState !== 'idle') return;
@@ -278,18 +305,53 @@ export function Header() {
           </button>
         </div>
 
-        {/* Record Button */}
-        <button
-          className="px-4 h-12 text-lg border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleRecord}
-          disabled={recordingState !== 'idle'}
-        >
-          {recordingState === 'idle' && 'Record'}
-          {recordingState === 'waiting' && 'Waiting to record...'}
-          {recordingState === 'recording' && 'Recording...'}
-          {recordingState === 'processing' && 'Processing...'}
-          {recordingState === 'ready' && 'Record'}
-        </button>
+        {/* Record Button or Compact Recording Controls */}
+        {!hasRecording ? (
+          <button
+            className="px-4 h-12 text-lg border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleRecord}
+            disabled={recordingState !== 'idle'}
+          >
+            {recordingState === 'idle' && 'Record'}
+            {recordingState === 'waiting' && 'Waiting to record...'}
+            {recordingState === 'recording' && 'Recording...'}
+            {recordingState === 'processing' && 'Processing...'}
+            {recordingState === 'ready' && 'Record'}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 bg-thingbeat-blue border-2 border-thingbeat-white p-2">
+            <button
+              onClick={() => setRecordingState('ready')}
+              className="text-thingbeat-white text-sm hover:underline"
+              title="Open recording modal"
+            >
+              Current recording:
+            </button>
+            <button
+              onClick={handleCompactDelete}
+              className="w-10 h-10 bg-thingbeat-blue border-2 border-thingbeat-white flex items-center justify-center hover:border-4"
+              title="Delete recording"
+            >
+              <img src="/icons/delete.svg" alt="Delete" className="w-16 h-16" />
+            </button>
+            <button
+              onClick={handleCompactDownload}
+              className="w-10 h-10 bg-thingbeat-blue border-2 border-thingbeat-white flex items-center justify-center hover:border-4"
+              title="Download recording"
+            >
+              {/* Placeholder icon - user will create download.svg */}
+              <span className="text-thingbeat-white text-xl">⬇</span>
+            </button>
+            <button
+              onClick={handleCompactShare}
+              className="w-10 h-10 bg-thingbeat-blue border-2 border-thingbeat-white flex items-center justify-center hover:border-4"
+              title="Share to gallery"
+            >
+              {/* Placeholder icon - user will create share.svg */}
+              <span className="text-thingbeat-white text-xl">↗</span>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

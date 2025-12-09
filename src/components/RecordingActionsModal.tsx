@@ -2,6 +2,8 @@
 
 import { useStore } from '@/store/useStore';
 import { useEffect, useRef, useState } from 'react';
+import * as Tone from 'tone';
+import { VolumeSlider } from './VolumeSlider';
 
 export function RecordingActionsModal() {
   const recordingState = useStore((state) => state.recordingState);
@@ -12,11 +14,31 @@ export function RecordingActionsModal() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const volumeButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Create audio URL from blob
+  // Stop main loop when modal opens, resume when closed
+  useEffect(() => {
+    if (recordingState === 'ready') {
+      // Pause the main loop
+      if (Tone.Transport.state === 'started') {
+        Tone.Transport.pause();
+      }
+
+      return () => {
+        // Resume main loop when modal closes
+        if (Tone.Transport.state === 'paused') {
+          Tone.Transport.start();
+        }
+      };
+    }
+  }, [recordingState]);
+
+  // Create audio URL from blob and autoplay
   useEffect(() => {
     if (recordingData.recordingBlob && !audioUrlRef.current) {
       const url = URL.createObjectURL(recordingData.recordingBlob);
@@ -25,11 +47,18 @@ export function RecordingActionsModal() {
       // Create audio element
       const audio = new Audio(url);
       audio.volume = volume;
+      audio.loop = true; // Loop the recording
       audioRef.current = audio;
 
       // Set up event listeners
       audio.addEventListener('loadedmetadata', () => {
         setDuration(audio.duration);
+        // Autoplay when ready
+        audio.play().then(() => {
+          setIsPlaying(true);
+        }).catch((error) => {
+          console.error('Autoplay failed:', error);
+        });
       });
 
       audio.addEventListener('timeupdate', () => {
@@ -50,7 +79,7 @@ export function RecordingActionsModal() {
         }
       };
     }
-  }, [recordingData.recordingBlob]);
+  }, [recordingData.recordingBlob, volume]);
 
   // Update volume
   useEffect(() => {
@@ -113,8 +142,8 @@ export function RecordingActionsModal() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Close modal after download
-    clearRecordingData();
+    // Keep recording for share/delete - just close modal by setting recordingState back to 'idle'
+    useStore.getState().setRecordingState('idle');
   };
 
   const handleShare = () => {
@@ -217,16 +246,32 @@ export function RecordingActionsModal() {
 
           {/* Volume Control */}
           <div className="flex items-center gap-4">
-            <span className="text-thingbeat-white text-sm">🔊</span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="flex-1 h-2 bg-thingbeat-white appearance-none cursor-pointer"
-            />
+            <div className="relative shrink-0">
+              <button
+                ref={volumeButtonRef}
+                onClick={() => {
+                  const rect = volumeButtonRef.current?.getBoundingClientRect() || null;
+                  setButtonRect(rect);
+                  setShowVolumeSlider(!showVolumeSlider);
+                }}
+                className="w-12 h-12 bg-thingbeat-blue border-2 border-thingbeat-white flex items-center justify-center hover:border-4"
+              >
+                <img
+                  src={volume === 0 ? "/icons/muted.svg" : "/icons/volume.svg"}
+                  alt={volume === 0 ? "Muted" : "Volume"}
+                  className="w-20 h-20"
+                />
+              </button>
+
+              {showVolumeSlider && (
+                <VolumeSlider
+                  volume={volume}
+                  onChange={setVolume}
+                  onClose={() => setShowVolumeSlider(false)}
+                  buttonRect={buttonRect}
+                />
+              )}
+            </div>
           </div>
         </div>
 
