@@ -65,6 +65,10 @@ type Store = {
   recordingData: RecordingData;
   setRecordingData: (data: Partial<RecordingData>) => void;
   clearRecordingData: () => void;
+
+  // Delete confirmation modal
+  showDeleteConfirm: boolean;
+  setShowDeleteConfirm: (show: boolean) => void;
 };
 
 const initialCell = (id: number): CellData => ({
@@ -134,6 +138,10 @@ export const useStore = create<Store>((set) => ({
     snapshots: Array(9).fill(null),
     zipBlob: null,
   },
+
+  // Delete confirmation modal
+  showDeleteConfirm: false,
+  setShowDeleteConfirm: (show) => set({ showDeleteConfirm: show }),
   setRecordingData: (data) =>
     set((state) => {
       const newRecordingData = { ...state.recordingData, ...data };

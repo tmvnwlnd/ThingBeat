@@ -75,7 +75,7 @@ export function Header() {
   };
 
   const handleCompactDelete = () => {
-    clearRecordingData();
+    useStore.getState().setShowDeleteConfirm(true);
   };
 
   const handleCompactDownload = () => {
@@ -339,16 +339,14 @@ export function Header() {
               className="w-10 h-10 bg-thingbeat-blue border-2 border-thingbeat-white flex items-center justify-center hover:border-4"
               title="Download recording"
             >
-              {/* Placeholder icon - user will create download.svg */}
-              <span className="text-thingbeat-white text-xl">⬇</span>
+              <img src="/icons/download.svg" alt="Download" className="w-6 h-6" />
             </button>
             <button
               onClick={handleCompactShare}
               className="w-10 h-10 bg-thingbeat-blue border-2 border-thingbeat-white flex items-center justify-center hover:border-4"
               title="Share to gallery"
             >
-              {/* Placeholder icon - user will create share.svg */}
-              <span className="text-thingbeat-white text-xl">↗</span>
+              <img src="/icons/share.svg" alt="Share" className="w-6 h-6" />
             </button>
           </div>
         )}

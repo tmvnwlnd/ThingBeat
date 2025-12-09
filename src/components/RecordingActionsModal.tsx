@@ -8,7 +8,9 @@ import { VolumeSlider } from './VolumeSlider';
 export function RecordingActionsModal() {
   const recordingState = useStore((state) => state.recordingState);
   const recordingData = useStore((state) => state.recordingData);
-  const clearRecordingData = useStore((state) => state.clearRecordingData);
+  const settings = useStore((state) => state.settings);
+  const updateSettings = useStore((state) => state.updateSettings);
+  const setShowDeleteConfirm = useStore((state) => state.setShowDeleteConfirm);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -20,16 +22,24 @@ export function RecordingActionsModal() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const volumeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousMuteStateRef = useRef(false);
 
   // Stop main loop when modal opens, resume when closed
   useEffect(() => {
     if (recordingState === 'ready') {
+      // Save current mute state and mute all
+      previousMuteStateRef.current = settings.muteAll;
+      updateSettings({ muteAll: true });
+
       // Pause the main loop
       if (Tone.Transport.state === 'started') {
         Tone.Transport.pause();
       }
 
       return () => {
+        // Restore previous mute state
+        updateSettings({ muteAll: previousMuteStateRef.current });
+
         // Resume main loop when modal closes
         if (Tone.Transport.state === 'paused') {
           Tone.Transport.start();
@@ -100,24 +110,6 @@ export function RecordingActionsModal() {
     }
   };
 
-  const handleStop = () => {
-    if (!audioRef.current) return;
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
-    setIsPlaying(false);
-    setCurrentTime(0);
-  };
-
-  const handleRestart = () => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = 0;
-    setCurrentTime(0);
-    if (!isPlaying) {
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!audioRef.current) return;
     const newTime = parseFloat(e.target.value);
@@ -126,7 +118,18 @@ export function RecordingActionsModal() {
   };
 
   const handleDelete = () => {
-    clearRecordingData();
+    setShowDeleteConfirm(true);
+  };
+
+  const handleClose = () => {
+    // Stop audio playback when closing modal
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+    useStore.getState().setRecordingState('idle');
   };
 
   const handleDownload = () => {
@@ -142,8 +145,7 @@ export function RecordingActionsModal() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Keep recording for share/delete - just close modal by setting recordingState back to 'idle'
-    useStore.getState().setRecordingState('idle');
+    // Don't close modal - keep it open so user can still share/delete
   };
 
   const handleShare = () => {
@@ -168,12 +170,22 @@ export function RecordingActionsModal() {
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black bg-opacity-70"
-        onClick={handleDelete}
+        onClick={handleClose}
       />
 
       {/* Modal */}
       <div className="relative bg-thingbeat-blue border-4 border-thingbeat-white p-6 w-full max-w-2xl font-['Silkscreen']">
-        <h2 className="text-2xl text-thingbeat-white mb-6">Your Recording</h2>
+        {/* Header with title and close button */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl text-thingbeat-white">Your Recording</h2>
+          <button
+            onClick={handleClose}
+            className="w-8 h-8 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center"
+            title="Close"
+          >
+            <img src="/icons/x.svg" alt="Close" className="w-6 h-6" />
+          </button>
+        </div>
 
         {/* 3x3 Snapshot Grid */}
         <div className="grid grid-cols-3 gap-2 mb-6">
@@ -203,21 +215,13 @@ export function RecordingActionsModal() {
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={handlePlayPause}
-              className="w-12 h-12 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center text-xl"
+              className="w-12 h-12 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center"
             >
-              {isPlaying ? '⏸️' : '▶️'}
-            </button>
-            <button
-              onClick={handleStop}
-              className="w-12 h-12 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center text-xl"
-            >
-              ⏹️
-            </button>
-            <button
-              onClick={handleRestart}
-              className="w-12 h-12 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center text-xl"
-            >
-              ⏮️
+              <img
+                src={isPlaying ? "/icons/pause.svg" : "/icons/play.svg"}
+                alt={isPlaying ? "Pause" : "Play"}
+                className="w-8 h-8"
+              />
             </button>
           </div>
 
@@ -302,6 +306,7 @@ export function RecordingActionsModal() {
           </button>
         </div>
       </div>
+
     </div>
   );
 }

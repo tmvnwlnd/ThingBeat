@@ -79,6 +79,33 @@
 
 ---
 
+### 6. Loop Playback Mismatch for Longer-Than-Expected Sounds
+**Priority:** Medium
+**Description:** When ElevenLabs generates sounds that are longer than the requested loop length, they play out of sync with the intended loop timing.
+
+**Current Behavior:**
+- Request a loop for X bars at Y BPM
+- ElevenLabs sometimes generates audio longer than expected
+- Sound plays beyond the intended loop boundary
+- Causes timing issues with other cells
+- Particularly noticeable with drum loops and melodies
+
+**Potential Solutions:**
+- Trim audio to exact loop length before playback
+- Fade out audio at loop boundary
+- Time-stretch audio to fit intended duration using Tone.js
+- Add validation in audio generation to reject sounds that exceed length
+- Improve ElevenLabs prompt to emphasize exact duration requirements
+
+**Files to investigate**:
+- `src/components/SoundControls.tsx` - Playback logic
+- `src/lib/sfx.ts` - Audio generation and duration calculation
+- `src/app/api/generate-audio/route.ts` - ElevenLabs request parameters
+
+**Impact:** Medium - affects musical timing and loop synchronization
+
+---
+
 ## Enhancements
 
 ### 1. Improve LLM Prompts for Better Sound Descriptions
@@ -99,7 +126,42 @@
 
 ---
 
-### 2. Export Performance as MP3
+### 2. WaveSurfer Visualization for Recorded Performances
+**Priority:** Medium
+**Description:** Add a waveform visualization to the recording playback modal using WaveSurfer.js to provide visual feedback during playback.
+
+**Current State**: Recording modal has basic audio controls with timeline slider, but no visual waveform representation
+
+**Proposed Enhancement**:
+- Generate WaveSurfer waveform from the recorded performance
+- Display waveform in the RecordingActionsModal
+- Show playback progress on the waveform
+- Allow seeking by clicking on the waveform
+- Style waveform to match ThingBeat aesthetic (blue/white colors)
+- Reuse existing WaveSurfer integration from Cell component
+
+**Benefits**:
+- Better visual feedback during playback
+- Easier to navigate long recordings
+- Consistent with cell waveform displays
+- Professional appearance
+
+**Implementation Notes**:
+- WaveSurfer.js is already a dependency (used in SoundControls)
+- Can reuse similar configuration from cell waveforms
+- Initialize WaveSurfer in RecordingActionsModal on recording load
+- Sync waveform progress with HTML5 Audio element playback
+- Consider performance for longer recordings (might need smaller waveform resolution)
+
+**Files to modify**:
+- `src/components/RecordingActionsModal.tsx` - Add WaveSurfer integration
+- Possibly extract waveform config to shared utility
+
+**Estimated Scope**: Small (1-2 hours of development)
+
+---
+
+### 3. Export Performance as MP3
 **Priority:** Medium
 **Description:** Change the export format from WebM to MP3 for better compatibility and smaller file size.
 

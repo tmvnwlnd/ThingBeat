@@ -1,6 +1,7 @@
 import { Header } from '@/components/Header';
 import { CameraGrid } from '@/components/CameraGrid';
 import { RecordingActionsModal } from '@/components/RecordingActionsModal';
+import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal';
 
 export default function Home() {
   return (
@@ -10,6 +11,7 @@ export default function Home() {
         <CameraGrid />
       </div>
       <RecordingActionsModal />
+      <DeleteConfirmationModal />
     </main>
   );
 }
