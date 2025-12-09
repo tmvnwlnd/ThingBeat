@@ -8,8 +8,9 @@ import JSZip from 'jszip';
 export function Header() {
   const settings = useStore((state) => state.settings);
   const updateSettings = useStore((state) => state.updateSettings);
-  const exportState = useStore((state) => state.exportState);
-  const setExportState = useStore((state) => state.setExportState);
+  const recordingState = useStore((state) => state.recordingState);
+  const setRecordingState = useStore((state) => state.setRecordingState);
+  const setRecordingData = useStore((state) => state.setRecordingData);
   const cells = useStore((state) => state.cells);
 
   const recorderRef = useRef<Tone.Recorder | null>(null);
@@ -71,8 +72,8 @@ export function Header() {
     updateSettings({ muteAll: !settings.muteAll });
   };
 
-  const handleExport = async () => {
-    if (exportState !== 'idle') return;
+  const handleRecord = async () => {
+    if (recordingState !== 'idle') return;
 
     try {
       // Initialize Tone.js if not started
@@ -94,7 +95,7 @@ export function Header() {
       const recordDuration = loopDuration * 2; // Record 2 loops
 
       // Wait for the start of the next loop
-      setExportState('waiting');
+      setRecordingState('waiting');
 
       // Calculate time until next loop start
       const currentPosition = Tone.Transport.seconds;
@@ -103,20 +104,18 @@ export function Header() {
 
       setTimeout(async () => {
         // Start recording at the beginning of the loop
-        setExportState('recording');
+        setRecordingState('recording');
         recorder.start();
 
         // Stop recording after 2 loops
         setTimeout(async () => {
-          setExportState('processing');
+          setRecordingState('processing');
 
           // Stop recording
           const recording = await recorder.stop();
 
-          // Create zip file
+          // Create zip file (for download option later)
           const zip = new JSZip();
-
-          // Add recorded performance
           zip.file('performance.webm', recording);
 
           // Add all generated sound files
@@ -125,11 +124,8 @@ export function Header() {
             for (const cell of cells) {
               if (cell.state === 'ready' && cell.audioUrl && cell.category) {
                 try {
-                  // Fetch the audio data
                   const response = await fetch(cell.audioUrl);
                   const blob = await response.blob();
-
-                  // Create filename
                   const filename = `cell_${cell.id}_${cell.category}.mp3`;
                   soundsFolder.file(filename, blob);
                 } catch (error) {
@@ -139,26 +135,29 @@ export function Header() {
             }
           }
 
-          // Generate and download zip
           const zipBlob = await zip.generateAsync({ type: 'blob' });
-          const url = URL.createObjectURL(zipBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `thingbeat_export_${Date.now()}.zip`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
 
-          // Clean up
+          // Capture all 9 cell snapshots
+          const snapshots: (string | null)[] = cells.map((cell) => cell.snapshot || null);
+
+          // Store recording data in Zustand
+          setRecordingData({
+            recordingBlob: recording,
+            snapshots,
+            zipBlob,
+          });
+
+          // Set state to 'ready' which will open the RecordingActionsModal
+          setRecordingState('ready');
+
+          // Clean up recorder
           recorder.dispose();
           recorderRef.current = null;
-          setExportState('idle');
         }, recordDuration * 1000);
       }, timeUntilNextLoop * 1000);
     } catch (error) {
-      console.error('Export failed:', error);
-      setExportState('idle');
+      console.error('Recording failed:', error);
+      setRecordingState('idle');
     }
   };
 
@@ -279,16 +278,17 @@ export function Header() {
           </button>
         </div>
 
-        {/* Export Button */}
+        {/* Record Button */}
         <button
           className="px-4 h-12 text-lg border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleExport}
-          disabled={exportState !== 'idle'}
+          onClick={handleRecord}
+          disabled={recordingState !== 'idle'}
         >
-          {exportState === 'idle' && 'Export sounds'}
-          {exportState === 'waiting' && 'Waiting to record...'}
-          {exportState === 'recording' && 'Recording...'}
-          {exportState === 'processing' && 'Processing...'}
+          {recordingState === 'idle' && 'Record'}
+          {recordingState === 'waiting' && 'Waiting to record...'}
+          {recordingState === 'recording' && 'Recording...'}
+          {recordingState === 'processing' && 'Processing...'}
+          {recordingState === 'ready' && 'Record'}
         </button>
       </div>
     </header>

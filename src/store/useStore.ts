@@ -25,6 +25,14 @@ type GlobalSettings = {
 
 export type ExportState = 'idle' | 'waiting' | 'recording' | 'processing';
 
+export type RecordingState = 'idle' | 'waiting' | 'recording' | 'processing' | 'ready';
+
+export type RecordingData = {
+  recordingBlob: Blob | null;
+  snapshots: (string | null)[]; // 9 cell snapshots (base64)
+  zipBlob: Blob | null; // For download option
+};
+
 type Store = {
   // Global settings
   settings: GlobalSettings;
@@ -47,9 +55,16 @@ type Store = {
   videoStream: MediaStream | null;
   setVideoStream: (stream: MediaStream | null) => void;
 
-  // Export state
+  // Export state (legacy - keeping for backward compatibility)
   exportState: ExportState;
   setExportState: (state: ExportState) => void;
+
+  // Recording state (new - for Record button with modal flow)
+  recordingState: RecordingState;
+  setRecordingState: (state: RecordingState) => void;
+  recordingData: RecordingData;
+  setRecordingData: (data: Partial<RecordingData>) => void;
+  clearRecordingData: () => void;
 };
 
 const initialCell = (id: number): CellData => ({
@@ -110,4 +125,26 @@ export const useStore = create<Store>((set) => ({
   // Export state
   exportState: 'idle',
   setExportState: (state) => set({ exportState: state }),
+
+  // Recording state (new)
+  recordingState: 'idle',
+  setRecordingState: (state) => set({ recordingState: state }),
+  recordingData: {
+    recordingBlob: null,
+    snapshots: Array(9).fill(null),
+    zipBlob: null,
+  },
+  setRecordingData: (data) =>
+    set((state) => ({
+      recordingData: { ...state.recordingData, ...data },
+    })),
+  clearRecordingData: () =>
+    set({
+      recordingData: {
+        recordingBlob: null,
+        snapshots: Array(9).fill(null),
+        zipBlob: null,
+      },
+      recordingState: 'idle',
+    }),
 }));
