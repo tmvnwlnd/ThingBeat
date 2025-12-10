@@ -153,31 +153,7 @@ export function SoundControls({
           // Convert AudioBuffer to Tone.js ToneAudioBuffer
           const toneBuffer = new Tone.ToneAudioBuffer(quantizedBuffer);
 
-          // For synth, create 13 players (one for each semitone)
-          if (category === 'synth_timbre') {
-            Object.values(SYNTH_KEY_MAP).forEach((semitone) => {
-              const totalSemitones = semitone + keyTranspositionSemitones;
-              const player = new Tone.Player({
-                loop: false,
-                volume: Tone.gainToDb(volume),
-                playbackRate: Math.pow(2, totalSemitones / 12),
-                mute: muteAll,
-              }).toDestination();
-
-              player.buffer = toneBuffer;
-              synthPlayersRef.current.set(semitone, player);
-
-              if (semitone === 0) {
-                console.log(`✅ Synth audio loaded for cell ${cellId}`);
-                setAudioDuration(toneBuffer.duration);
-                startKeepAlive();
-              }
-            });
-
-            return;
-          }
-
-          // For rhythmic categories with quantization, use the quantized buffer
+          // For rhythmic categories with quantization (drum_loop and lead_line only)
           // Include speed multiplier for drum loops
           const speedMultiplier = category === 'drum_loop' ? SPEED_MULTIPLIERS[speedIndex] : 1;
           const combinedPlaybackRate = bpmPlaybackRate * Math.pow(2, keyTranspositionSemitones / 12) * speedMultiplier;
