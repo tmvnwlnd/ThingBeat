@@ -3,6 +3,7 @@ import { CameraGrid } from '@/components/CameraGrid';
 import { RecordingActionsModal } from '@/components/RecordingActionsModal';
 import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal';
 import { SubmissionModal } from '@/components/SubmissionModal';
+import { SuccessModal } from '@/components/SuccessModal';
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
       <RecordingActionsModal />
       <DeleteConfirmationModal />
       <SubmissionModal />
+      <SuccessModal />
     </main>
   );
 }

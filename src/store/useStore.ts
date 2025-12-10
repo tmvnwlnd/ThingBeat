@@ -73,6 +73,11 @@ type Store = {
   // Submission modal
   showSubmissionModal: boolean;
   setShowSubmissionModal: (show: boolean) => void;
+
+  // Success modal
+  showSuccessModal: boolean;
+  successMessage: string;
+  setShowSuccessModal: (show: boolean, message?: string) => void;
 };
 
 const initialCell = (id: number): CellData => ({
@@ -150,6 +155,11 @@ export const useStore = create<Store>((set) => ({
   // Submission modal
   showSubmissionModal: false,
   setShowSubmissionModal: (show) => set({ showSubmissionModal: show }),
+
+  // Success modal
+  showSuccessModal: false,
+  successMessage: '',
+  setShowSuccessModal: (show, message = '') => set({ showSuccessModal: show, successMessage: message }),
 
   setRecordingData: (data) =>
     set((state) => {

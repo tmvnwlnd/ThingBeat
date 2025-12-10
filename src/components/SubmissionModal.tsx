@@ -80,8 +80,9 @@ export function SubmissionModal() {
         console.log(`Cleaned up ${result.cleanedUp} old beats to make space`);
       }
 
-      // Show success message
-      alert(`Beat shared successfully! Your beat is now in the community gallery.${result.cleanedUp > 0 ? `\n\nNote: ${result.cleanedUp} old beat${result.cleanedUp > 1 ? 's were' : ' was'} automatically removed to make space.` : ''}`);
+      // Show success modal
+      const message = `Beat shared successfully! Your beat is now in the community gallery.${result.cleanedUp > 0 ? `\n\nNote: ${result.cleanedUp} old beat${result.cleanedUp > 1 ? 's were' : ' was'} automatically removed to make space.` : ''}`;
+      useStore.getState().setShowSuccessModal(true, message);
 
       // Close modal but DON'T clear recording (only delete when user clicks delete button)
       setShowSubmissionModal(false);
