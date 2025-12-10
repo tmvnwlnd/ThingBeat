@@ -149,9 +149,17 @@ export function RecordingActionsModal() {
   };
 
   const handleShare = () => {
-    // TODO: Open submission modal in Phase 3
-    console.log('Share button clicked - will open submission modal');
-    alert('Share to gallery feature coming in Phase 3!');
+    // Stop audio playback before opening submission modal
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+    // Open submission modal
+    useStore.getState().setShowSubmissionModal(true);
+    // Close this modal
+    useStore.getState().setRecordingState('idle');
   };
 
   const formatTime = (seconds: number) => {

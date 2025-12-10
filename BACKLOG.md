@@ -106,6 +106,32 @@
 
 ---
 
+### 7. Recording Flow Final Testing and Polish
+**Priority:** Low
+**Description:** Minor bugs in the recording and submission flow need final testing and cleanup.
+
+**Current State**: Core functionality works - recording, modal flow, upload to Supabase all functional
+
+**Known Minor Issues**:
+- Some edge cases in audio playback state management
+- Potential UI polish needed for modal transitions
+- Testing needed for various recording scenarios
+
+**Testing Needed**:
+- Multiple consecutive recordings
+- Cancel during recording
+- Network failures during upload
+- Edge cases with modal transitions
+
+**Files to review**:
+- `src/components/RecordingActionsModal.tsx`
+- `src/components/SubmissionModal.tsx`
+- `src/components/DeleteConfirmationModal.tsx`
+
+**Impact:** Low - core functionality works, just minor polish needed
+
+---
+
 ## Enhancements
 
 ### 1. Improve LLM Prompts for Better Sound Descriptions

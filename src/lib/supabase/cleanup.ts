@@ -25,7 +25,7 @@ export async function cleanupOldestBeats(
       return 0;
     }
 
-    const currentUsage = bucketData?.file_size_limit || 0;
+    let currentUsage = bucketData?.file_size_limit || 0;
     console.log(`Current storage usage: ${(currentUsage / 1024 / 1024).toFixed(2)}MB`);
 
     // If we're already below target, no cleanup needed

@@ -69,6 +69,10 @@ type Store = {
   // Delete confirmation modal
   showDeleteConfirm: boolean;
   setShowDeleteConfirm: (show: boolean) => void;
+
+  // Submission modal
+  showSubmissionModal: boolean;
+  setShowSubmissionModal: (show: boolean) => void;
 };
 
 const initialCell = (id: number): CellData => ({
@@ -142,6 +146,11 @@ export const useStore = create<Store>((set) => ({
   // Delete confirmation modal
   showDeleteConfirm: false,
   setShowDeleteConfirm: (show) => set({ showDeleteConfirm: show }),
+
+  // Submission modal
+  showSubmissionModal: false,
+  setShowSubmissionModal: (show) => set({ showSubmissionModal: show }),
+
   setRecordingData: (data) =>
     set((state) => {
       const newRecordingData = { ...state.recordingData, ...data };

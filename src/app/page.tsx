@@ -2,6 +2,7 @@ import { Header } from '@/components/Header';
 import { CameraGrid } from '@/components/CameraGrid';
 import { RecordingActionsModal } from '@/components/RecordingActionsModal';
 import { DeleteConfirmationModal } from '@/components/DeleteConfirmationModal';
+import { SubmissionModal } from '@/components/SubmissionModal';
 
 export default function Home() {
   return (
@@ -12,6 +13,7 @@ export default function Home() {
       </div>
       <RecordingActionsModal />
       <DeleteConfirmationModal />
+      <SubmissionModal />
     </main>
   );
 }

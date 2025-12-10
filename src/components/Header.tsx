@@ -92,9 +92,8 @@ export function Header() {
   };
 
   const handleCompactShare = () => {
-    // TODO: Open submission modal in Phase 3
-    console.log('Share button clicked from compact controls');
-    alert('Share to gallery feature coming in Phase 3!');
+    // Open submission modal directly from compact controls
+    useStore.getState().setShowSubmissionModal(true);
   };
 
   const hasRecording = recordingData.recordingBlob !== null && recordingState === 'idle';
