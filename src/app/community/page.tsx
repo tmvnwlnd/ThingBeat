@@ -81,9 +81,9 @@ export default function CommunityPage() {
           <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="bg-thingbeat-white px-2 py-2 hover:opacity-80 transition-opacity"
+              className="bg-thingbeat-white px-2 py-2 hover:bg-thingbeat-blue"
             >
-              <h1 className="text-[24px] font-bold text-thingbeat-blue leading-none">
+              <h1 className="text-[24px] font-bold text-thingbeat-blue hover:text-thingbeat-white leading-none">
                 Thingbeat
               </h1>
             </Link>

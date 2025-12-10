@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 
 type Beat = {
   id: string;
@@ -63,62 +64,67 @@ export function BeatCard({ beat }: { beat: Beat }) {
   };
 
   return (
-    <div className="bg-thingbeat-blue border-2 border-thingbeat-white p-3 flex flex-col gap-2">
-      {/* 3x3 Snapshot Grid */}
-      <div className="grid grid-cols-3 gap-1">
-        {beat.snapshot_urls.map((url, index) => (
-          <div
-            key={index}
-            className="aspect-video border border-thingbeat-white bg-thingbeat-blue"
+    <Link href={`/community/${beat.id}`}>
+      <div className="bg-thingbeat-blue border-2 border-thingbeat-white p-3 flex flex-col gap-2 cursor-pointer hover:border-4">
+        {/* 3x3 Snapshot Grid */}
+        <div className="grid grid-cols-3 gap-1">
+          {beat.snapshot_urls.map((url, index) => (
+            <div
+              key={index}
+              className="aspect-video border border-thingbeat-white bg-thingbeat-blue"
+            >
+              {url ? (
+                <img
+                  src={url}
+                  alt={`Cell ${index}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-thingbeat-white text-[8px]">
+                  -
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Beat Info */}
+        <div className="flex flex-col gap-1">
+          <h3
+            className="text-thingbeat-white text-sm font-bold line-clamp-2"
+            title={beat.beat_name}
           >
-            {url ? (
-              <img
-                src={url}
-                alt={`Cell ${index}`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-thingbeat-white opacity-20 text-[8px]">
-                -
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+            {beat.beat_name}
+          </h3>
+          <p
+            className="text-thingbeat-white text-xs line-clamp-1"
+            title={beat.user_name}
+          >
+            by {beat.user_name}
+          </p>
+        </div>
 
-      {/* Beat Info */}
-      <div className="flex flex-col gap-1">
-        <h3
-          className="text-thingbeat-white text-sm font-bold line-clamp-2"
-          title={beat.beat_name}
+        {/* Metadata */}
+        <div className="flex items-center justify-between text-thingbeat-white text-[10px]">
+          <span>{beat.bpm} BPM • {beat.key}</span>
+          <span>{formatTimestamp(beat.created_at)}</span>
+        </div>
+
+        {/* Play Button */}
+        <button
+          onClick={(e) => {
+            e.preventDefault(); // Prevent navigation when clicking play
+            handlePlayPause();
+          }}
+          className="w-full h-10 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:border-4 flex items-center justify-center"
         >
-          {beat.beat_name}
-        </h3>
-        <p
-          className="text-thingbeat-white text-xs opacity-70 line-clamp-1"
-          title={beat.user_name}
-        >
-          by {beat.user_name}
-        </p>
+          <img
+            src={isPlaying ? '/icons/pause.svg' : '/icons/play.svg'}
+            alt={isPlaying ? 'Pause' : 'Play'}
+            className="w-6 h-6"
+          />
+        </button>
       </div>
-
-      {/* Metadata */}
-      <div className="flex items-center justify-between text-thingbeat-white text-[10px] opacity-50">
-        <span>{beat.bpm} BPM • {beat.key}</span>
-        <span>{formatTimestamp(beat.created_at)}</span>
-      </div>
-
-      {/* Play Button */}
-      <button
-        onClick={handlePlayPause}
-        className="w-full h-10 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center"
-      >
-        <img
-          src={isPlaying ? '/icons/pause.svg' : '/icons/play.svg'}
-          alt={isPlaying ? 'Pause' : 'Play'}
-          className="w-6 h-6"
-        />
-      </button>
-    </div>
+    </Link>
   );
 }

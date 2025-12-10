@@ -80,9 +80,9 @@ export function SubmissionModal() {
         console.log(`Cleaned up ${result.cleanedUp} old beats to make space`);
       }
 
-      // Show success modal
+      // Show success modal with beatId for mail link
       const message = `Beat shared successfully! Your beat is now in the community gallery.${result.cleanedUp > 0 ? `\n\nNote: ${result.cleanedUp} old beat${result.cleanedUp > 1 ? 's were' : ' was'} automatically removed to make space.` : ''}`;
-      useStore.getState().setShowSuccessModal(true, message);
+      useStore.getState().setShowSuccessModal(true, message, result.beatId);
 
       // Close modal but DON'T clear recording (only delete when user clicks delete button)
       setShowSubmissionModal(false);
@@ -113,7 +113,7 @@ export function SubmissionModal() {
           <h2 className="text-2xl text-thingbeat-white">Share to Community Gallery</h2>
           <button
             onClick={handleCancel}
-            className="w-8 h-8 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center"
+            className="w-8 h-8 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:border-4 flex items-center justify-center"
             title="Cancel"
           >
             <img src="/icons/x.svg" alt="Close" className="w-6 h-6" />

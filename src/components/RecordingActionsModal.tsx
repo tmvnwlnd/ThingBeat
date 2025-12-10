@@ -3,7 +3,9 @@
 import { useStore } from '@/store/useStore';
 import { useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
+import WaveSurfer from 'wavesurfer.js';
 import { VolumeSlider } from './VolumeSlider';
+import { convertWebMToWav } from '@/lib/audioConvert';
 
 export function RecordingActionsModal() {
   const recordingState = useStore((state) => state.recordingState);
@@ -13,8 +15,6 @@ export function RecordingActionsModal() {
   const setShowDeleteConfirm = useStore((state) => state.setShowDeleteConfirm);
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
@@ -22,6 +22,8 @@ export function RecordingActionsModal() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const volumeButtonRef = useRef<HTMLButtonElement>(null);
+  const waveformRef = useRef<HTMLDivElement>(null);
+  const wavesurferRef = useRef<WaveSurfer | null>(null);
   const previousMuteStateRef = useRef(false);
 
   // Stop main loop when modal opens, resume when closed
@@ -48,9 +50,10 @@ export function RecordingActionsModal() {
     }
   }, [recordingState]);
 
-  // Create audio URL from blob and autoplay
+  // Create audio URL from blob and autoplay (only when modal is open)
   useEffect(() => {
-    if (recordingData.recordingBlob && !audioUrlRef.current) {
+    // Only create audio when modal is actually showing
+    if (recordingState === 'ready' && recordingData.recordingBlob && !audioUrlRef.current) {
       const url = URL.createObjectURL(recordingData.recordingBlob);
       audioUrlRef.current = url;
 
@@ -60,36 +63,57 @@ export function RecordingActionsModal() {
       audio.loop = true; // Loop the recording
       audioRef.current = audio;
 
-      // Set up event listeners
-      audio.addEventListener('loadedmetadata', () => {
-        setDuration(audio.duration);
-        // Autoplay when ready
-        audio.play().then(() => {
-          setIsPlaying(true);
-        }).catch((error) => {
-          console.error('Autoplay failed:', error);
-        });
+      // Autoplay when ready
+      audio.play().then(() => {
+        setIsPlaying(true);
+      }).catch((error) => {
+        console.error('Autoplay failed:', error);
       });
-
-      audio.addEventListener('timeupdate', () => {
-        setCurrentTime(audio.currentTime);
-      });
-
-      audio.addEventListener('ended', () => {
-        setIsPlaying(false);
-        setCurrentTime(0);
-      });
-
-      return () => {
-        audio.pause();
-        audio.src = '';
-        if (audioUrlRef.current) {
-          URL.revokeObjectURL(audioUrlRef.current);
-          audioUrlRef.current = null;
-        }
-      };
     }
-  }, [recordingData.recordingBlob, volume]);
+
+    return () => {
+      // Cleanup audio when modal closes
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current = null;
+      }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
+      setIsPlaying(false);
+    };
+  }, [recordingState, recordingData.recordingBlob, volume]);
+
+  // Initialize WaveSurfer for waveform visualization
+  useEffect(() => {
+    if (!waveformRef.current || !audioUrlRef.current || recordingState !== 'ready') return;
+
+    const wavesurfer = WaveSurfer.create({
+      container: waveformRef.current,
+      waveColor: '#FFFFFF',
+      progressColor: '#FFFFFF',
+      cursorWidth: 0,
+      barWidth: 2,
+      barGap: 4,
+      barRadius: 0,
+      height: 48,
+      barHeight: 1,
+      normalize: true,
+      interact: false, // Disable scrubbing
+      hideScrollbar: true,
+      minPxPerSec: 1,
+    });
+
+    wavesurfer.load(audioUrlRef.current);
+    wavesurferRef.current = wavesurfer;
+
+    return () => {
+      wavesurfer.destroy();
+      wavesurferRef.current = null;
+    };
+  }, [audioUrlRef.current, recordingState]);
 
   // Update volume
   useEffect(() => {
@@ -110,13 +134,6 @@ export function RecordingActionsModal() {
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!audioRef.current) return;
-    const newTime = parseFloat(e.target.value);
-    audioRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
-  };
-
   const handleDelete = () => {
     setShowDeleteConfirm(true);
   };
@@ -127,23 +144,32 @@ export function RecordingActionsModal() {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setIsPlaying(false);
-      setCurrentTime(0);
     }
     useStore.getState().setRecordingState('idle');
   };
 
-  const handleDownload = () => {
-    if (!recordingData.zipBlob) return;
+  const handleDownload = async () => {
+    if (!recordingData.recordingBlob) return;
 
-    // Download ZIP file
-    const url = URL.createObjectURL(recordingData.zipBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `thingbeat_recording_${Date.now()}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      // Convert WebM to WAV
+      console.log('Converting WebM to WAV...');
+      const wavBlob = await convertWebMToWav(recordingData.recordingBlob);
+      console.log('Conversion complete!');
+
+      // Download WAV file
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `thingbeat_recording_${Date.now()}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to convert audio:', error);
+      alert('Failed to convert recording. Please try again.');
+    }
 
     // Don't close modal - keep it open so user can still share/delete
   };
@@ -154,7 +180,6 @@ export function RecordingActionsModal() {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setIsPlaying(false);
-      setCurrentTime(0);
     }
     // Open submission modal
     useStore.getState().setShowSubmissionModal(true);
@@ -162,11 +187,6 @@ export function RecordingActionsModal() {
     useStore.getState().setRecordingState('idle');
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
   // Only show modal when recordingState is 'ready'
   if (recordingState !== 'ready' || !recordingData.recordingBlob) {
@@ -188,7 +208,7 @@ export function RecordingActionsModal() {
           <h2 className="text-2xl text-thingbeat-white">Your Recording</h2>
           <button
             onClick={handleClose}
-            className="w-8 h-8 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center"
+            className="w-8 h-8 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:border-4 flex items-center justify-center"
             title="Close"
           >
             <img src="/icons/x.svg" alt="Close" className="w-6 h-6" />
@@ -209,7 +229,7 @@ export function RecordingActionsModal() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-thingbeat-white opacity-30">
+                <div className="w-full h-full flex items-center justify-center text-thingbeat-white">
                   Empty
                 </div>
               )}
@@ -219,11 +239,11 @@ export function RecordingActionsModal() {
 
         {/* Audio Player */}
         <div className="border-2 border-thingbeat-white p-4 mb-6">
-          {/* Play Controls */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            {/* Play/Pause Button */}
             <button
               onClick={handlePlayPause}
-              className="w-12 h-12 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue flex items-center justify-center"
+              className="w-12 h-12 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:border-4 flex items-center justify-center shrink-0"
             >
               <img
                 src={isPlaying ? "/icons/pause.svg" : "/icons/play.svg"}
@@ -231,33 +251,8 @@ export function RecordingActionsModal() {
                 className="w-8 h-8"
               />
             </button>
-          </div>
 
-          {/* Timeline */}
-          <div className="mb-2">
-            <input
-              type="range"
-              min="0"
-              max={duration || 0}
-              value={currentTime}
-              onChange={handleSeek}
-              className="w-full h-2 bg-thingbeat-white appearance-none cursor-pointer"
-              style={{
-                background: `linear-gradient(to right, white ${
-                  (currentTime / duration) * 100
-                }%, rgba(255,255,255,0.3) ${(currentTime / duration) * 100}%)`,
-              }}
-            />
-          </div>
-
-          {/* Time Display */}
-          <div className="flex justify-between text-thingbeat-white text-sm mb-4">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-
-          {/* Volume Control */}
-          <div className="flex items-center gap-4">
+            {/* Volume Button */}
             <div className="relative shrink-0">
               <button
                 ref={volumeButtonRef}
@@ -284,6 +279,9 @@ export function RecordingActionsModal() {
                 />
               )}
             </div>
+
+            {/* Waveform */}
+            <div ref={waveformRef} className="flex-1 h-12" />
           </div>
         </div>
 

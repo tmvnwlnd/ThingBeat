@@ -3,8 +3,8 @@
 import { useStore } from '@/store/useStore';
 import { useEffect, useRef } from 'react';
 import * as Tone from 'tone';
-import JSZip from 'jszip';
 import Link from 'next/link';
+import { convertWebMToWav } from '@/lib/audioConvert';
 
 export function Header() {
   const settings = useStore((state) => state.settings);
@@ -79,17 +79,28 @@ export function Header() {
     useStore.getState().setShowDeleteConfirm(true);
   };
 
-  const handleCompactDownload = () => {
-    if (!recordingData.zipBlob) return;
+  const handleCompactDownload = async () => {
+    if (!recordingData.recordingBlob) return;
 
-    const url = URL.createObjectURL(recordingData.zipBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `thingbeat_recording_${Date.now()}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      // Convert WebM to WAV
+      console.log('Converting WebM to WAV...');
+      const wavBlob = await convertWebMToWav(recordingData.recordingBlob);
+      console.log('Conversion complete!');
+
+      // Download WAV file
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `thingbeat_recording_${Date.now()}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to convert audio:', error);
+      alert('Failed to convert recording. Please try again.');
+    }
   };
 
   const handleCompactShare = () => {
@@ -141,37 +152,14 @@ export function Header() {
           // Stop recording
           const recording = await recorder.stop();
 
-          // Create zip file (for download option later)
-          const zip = new JSZip();
-          zip.file('performance.webm', recording);
-
-          // Add all generated sound files
-          const soundsFolder = zip.folder('sounds');
-          if (soundsFolder) {
-            for (const cell of cells) {
-              if (cell.state === 'ready' && cell.audioUrl && cell.category) {
-                try {
-                  const response = await fetch(cell.audioUrl);
-                  const blob = await response.blob();
-                  const filename = `cell_${cell.id}_${cell.category}.mp3`;
-                  soundsFolder.file(filename, blob);
-                } catch (error) {
-                  console.error(`Failed to add cell ${cell.id} to zip:`, error);
-                }
-              }
-            }
-          }
-
-          const zipBlob = await zip.generateAsync({ type: 'blob' });
-
           // Capture all 9 cell snapshots
           const snapshots: (string | null)[] = cells.map((cell) => cell.snapshot || null);
 
-          // Store recording data in Zustand
+          // Store recording data in Zustand (no ZIP needed - we convert to MP3 on download)
           setRecordingData({
             recordingBlob: recording,
             snapshots,
-            zipBlob,
+            zipBlob: null,
           });
 
           // Set state to 'ready' which will open the RecordingActionsModal
