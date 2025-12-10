@@ -8,6 +8,7 @@ import WaveSurfer from 'wavesurfer.js';
 import { VolumeSlider } from './VolumeSlider';
 import { SynthKeyboard } from './SynthKeyboard';
 import { startKeepAlive } from '@/lib/audioInit';
+import { dataUrlToAudioBuffer, quantizeAudioBuffer } from '@/lib/audioQuantize';
 
 type SoundControlsProps = {
   cellId: number;
@@ -122,68 +123,186 @@ export function SoundControls({
   useEffect(() => {
     if (!audioUrl) return;
 
-    // For synth, create 13 players (one for each semitone)
-    if (category === 'synth_timbre') {
-      Object.values(SYNTH_KEY_MAP).forEach((semitone) => {
-        // Apply key transposition: combine keyboard semitone + global key transposition
-        const totalSemitones = semitone + keyTranspositionSemitones;
-        const player = new Tone.Player({
-          url: audioUrl,
-          loop: false,
-          volume: Tone.gainToDb(volume),
-          playbackRate: Math.pow(2, totalSemitones / 12), // Pitch shift formula
-          onload: () => {
-            if (semitone === 0) {
-              console.log(`✅ Synth audio loaded for cell ${cellId}`);
-              setAudioDuration(player.buffer.duration);
-              // Start keep-alive to prevent AudioContext suspension during idle
-              startKeepAlive();
-            }
-          },
-        }).toDestination();
+    let disposed = false;
 
-        synthPlayersRef.current.set(semitone, player);
-      });
+    // Determine if we need to quantize (drum_loop and lead_line need exact grid timing)
+    const needsQuantization = category === 'drum_loop' || category === 'lead_line';
 
-      return () => {
+    // Calculate target duration for quantization
+    const targetDuration = needsQuantization && cell?.originalBPM && settings.loopLength
+      ? (settings.loopLength * 4 * 60) / cell.originalBPM
+      : null;
+
+    // Load and potentially quantize audio
+    const loadAudio = async () => {
+      // Quantize if needed
+      if (needsQuantization && targetDuration) {
+        try {
+          console.log(`🎯 Quantizing ${category} to ${targetDuration.toFixed(3)}s...`);
+
+          // Convert data URL to AudioBuffer
+          const audioBuffer = await dataUrlToAudioBuffer(audioUrl);
+          console.log(`📥 Original duration: ${audioBuffer.duration.toFixed(3)}s`);
+
+          // Quantize: remove leading silence, trim/pad to exact duration
+          const quantizedBuffer = quantizeAudioBuffer(audioBuffer, targetDuration, true);
+
+          // Check if component was unmounted during async operation
+          if (disposed) return;
+
+          // Convert AudioBuffer to Tone.js ToneAudioBuffer
+          const toneBuffer = new Tone.ToneAudioBuffer(quantizedBuffer);
+
+          // For synth, create 13 players (one for each semitone)
+          if (category === 'synth_timbre') {
+            Object.values(SYNTH_KEY_MAP).forEach((semitone) => {
+              const totalSemitones = semitone + keyTranspositionSemitones;
+              const player = new Tone.Player({
+                loop: false,
+                volume: Tone.gainToDb(volume),
+                playbackRate: Math.pow(2, totalSemitones / 12),
+                mute: muteAll,
+              }).toDestination();
+
+              player.buffer = toneBuffer;
+              synthPlayersRef.current.set(semitone, player);
+
+              if (semitone === 0) {
+                console.log(`✅ Synth audio loaded for cell ${cellId}`);
+                setAudioDuration(toneBuffer.duration);
+                startKeepAlive();
+              }
+            });
+
+            return;
+          }
+
+          // For rhythmic categories with quantization, use the quantized buffer
+          // Include speed multiplier for drum loops
+          const speedMultiplier = category === 'drum_loop' ? SPEED_MULTIPLIERS[speedIndex] : 1;
+          const combinedPlaybackRate = bpmPlaybackRate * Math.pow(2, keyTranspositionSemitones / 12) * speedMultiplier;
+
+          const player = new Tone.Player({
+            loop: shouldLoop,
+            volume: Tone.gainToDb(volume),
+            playbackRate: combinedPlaybackRate,
+            mute: muteAll,
+          }).toDestination();
+
+          player.buffer = toneBuffer;
+          playerRef.current = player;
+
+          console.log(`✅ Quantized audio loaded for cell ${cellId}`);
+          setAudioDuration(toneBuffer.duration);
+          startKeepAlive();
+
+          // Auto-start playback for looping categories (sync to Transport)
+          if (shouldLoop) {
+            // Calculate loop duration in seconds
+            const loopDurationSeconds = (settings.loopLength * 4 * 60) / settings.bpm;
+
+            // Schedule to start at the next bar boundary
+            const now = Tone.Transport.seconds;
+            const timeIntoLoop = now % loopDurationSeconds;
+            const timeUntilNextBar = loopDurationSeconds - timeIntoLoop;
+
+            // Start at next bar
+            player.start(`+${timeUntilNextBar}`);
+            setIsPlaying(true);
+          }
+
+          return; // Don't fall through to non-quantized path
+
+        } catch (error) {
+          console.error('❌ Quantization failed, falling back to original audio:', error);
+          if (disposed) return;
+          // Fall through to use original audio URL
+        }
+      }
+
+      // Check if component was unmounted
+      if (disposed) return;
+
+      // For non-quantized categories OR if quantization failed, use original URL
+      // For synth, create 13 players (one for each semitone)
+      if (category === 'synth_timbre') {
+        Object.values(SYNTH_KEY_MAP).forEach((semitone) => {
+          const totalSemitones = semitone + keyTranspositionSemitones;
+          const player = new Tone.Player({
+            url: audioUrl,
+            loop: false,
+            volume: Tone.gainToDb(volume),
+            playbackRate: Math.pow(2, totalSemitones / 12),
+            mute: muteAll,
+            onload: () => {
+              if (semitone === 0) {
+                console.log(`✅ Synth audio loaded for cell ${cellId}`);
+                setAudioDuration(player.buffer.duration);
+                startKeepAlive();
+              }
+            },
+          }).toDestination();
+
+          synthPlayersRef.current.set(semitone, player);
+        });
+
+        return;
+      }
+
+      // For other categories, use single player
+      // Include speed multiplier for drum loops
+      const speedMultiplier = category === 'drum_loop' ? SPEED_MULTIPLIERS[speedIndex] : 1;
+      const combinedPlaybackRate = bpmPlaybackRate * Math.pow(2, keyTranspositionSemitones / 12) * speedMultiplier;
+
+      const player = new Tone.Player({
+        url: audioUrl,
+        loop: shouldLoop,
+        volume: Tone.gainToDb(volume),
+        playbackRate: combinedPlaybackRate,
+        mute: muteAll,
+        onload: () => {
+          console.log(`✅ Audio loaded for cell ${cellId}`);
+          setAudioDuration(player.buffer.duration);
+          startKeepAlive();
+
+          // Auto-start playback for looping categories (sync to Transport)
+          if (shouldLoop) {
+            // Calculate loop duration in seconds
+            const loopDurationSeconds = (settings.loopLength * 4 * 60) / settings.bpm;
+
+            // Schedule to start at the next bar boundary
+            const now = Tone.Transport.seconds;
+            const timeIntoLoop = now % loopDurationSeconds;
+            const timeUntilNextBar = loopDurationSeconds - timeIntoLoop;
+
+            // Start at next bar
+            player.start(`+${timeUntilNextBar}`);
+            setIsPlaying(true);
+          }
+        },
+      }).toDestination();
+
+      playerRef.current = player;
+    };
+
+    loadAudio();
+
+    return () => {
+      disposed = true;
+
+      if (category === 'synth_timbre') {
         synthPlayersRef.current.forEach((player) => {
           player.stop();
           player.dispose();
         });
         synthPlayersRef.current.clear();
-      };
-    }
-
-    // For other categories, use single player
-    // Calculate combined playback rate (BPM adjustment * pitch shift for key)
-    const combinedPlaybackRate = bpmPlaybackRate * Math.pow(2, keyTranspositionSemitones / 12);
-
-    const player = new Tone.Player({
-      url: audioUrl,
-      loop: shouldLoop,
-      volume: Tone.gainToDb(volume),
-      playbackRate: combinedPlaybackRate,
-      onload: () => {
-        console.log(`✅ Audio loaded for cell ${cellId}`);
-        setAudioDuration(player.buffer.duration);
-        // Start keep-alive to prevent AudioContext suspension during idle
-        startKeepAlive();
-
-        // Auto-start playback for looping categories (AudioContext pre-initialized)
-        if (shouldLoop) {
-          player.start();
-          setIsPlaying(true);
-        }
-      },
-    }).toDestination();
-
-    playerRef.current = player;
-
-    return () => {
-      player.stop();
-      player.dispose();
+      } else if (playerRef.current) {
+        playerRef.current.stop();
+        playerRef.current.dispose();
+        playerRef.current = null;
+      }
     };
-  }, [audioUrl, cellId, shouldLoop, category, volume, bpmPlaybackRate, keyTranspositionSemitones]);
+  }, [audioUrl, cellId, shouldLoop, category, bpmPlaybackRate, keyTranspositionSemitones, cell?.originalBPM, settings.loopLength, settings.bpm]);
 
   // Update volume
   useEffect(() => {
@@ -196,7 +315,7 @@ export function SoundControls({
     }
   }, [volume, category]);
 
-  // Update global mute
+  // Update global mute - instant, no stopping/restarting
   useEffect(() => {
     if (category === 'synth_timbre') {
       synthPlayersRef.current.forEach((player) => {
@@ -236,12 +355,26 @@ export function SoundControls({
     };
   }, [audioUrl]);
 
-  // Update playback speed for drum loop
+  // Update playback speed for drum loop at next bar boundary
   useEffect(() => {
-    if (playerRef.current && category === 'drum_loop') {
-      playerRef.current.playbackRate = SPEED_MULTIPLIERS[speedIndex];
-    }
-  }, [speedIndex, category]);
+    if (!playerRef.current || category !== 'drum_loop') return;
+
+    // Calculate when the next bar starts
+    const loopDurationSeconds = (settings.loopLength * 4 * 60) / settings.bpm;
+    const now = Tone.Transport.seconds;
+    const timeIntoLoop = now % loopDurationSeconds;
+    const timeUntilNextBar = loopDurationSeconds - timeIntoLoop;
+
+    // Schedule speed change at next bar
+    const timeoutId = setTimeout(() => {
+      if (playerRef.current) {
+        const newPlaybackRate = SPEED_MULTIPLIERS[speedIndex] * bpmPlaybackRate * Math.pow(2, keyTranspositionSemitones / 12);
+        playerRef.current.playbackRate = newPlaybackRate;
+      }
+    }, timeUntilNextBar * 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [speedIndex, category, settings.loopLength, settings.bpm, bpmPlaybackRate, keyTranspositionSemitones]);
 
   // Keyboard trigger for drum one-shots
   useEffect(() => {

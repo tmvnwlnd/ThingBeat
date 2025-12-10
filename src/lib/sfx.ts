@@ -19,7 +19,7 @@ export type SfxRequestWithFormat = {
 
 /**
  * Build a request payload for ElevenLabs SFX API.
- * Applies the cost-saving rule: drum_loop duration is halved, and playback repeats twice.
+ * Note: We request full durations and then quantize client-side to ensure perfect grid sync.
  */
 export function buildSfxRequest(
   category: SoundCategory,
@@ -37,12 +37,8 @@ export function buildSfxRequest(
   // 2. Decide if loop smoothing should be requested
   const loop = category === "drum_loop" || category === "texture";
 
-  // 3. Decide duration (halve if drum loop)
-  // Here "full length" can be just a rough target you define elsewhere.
-  // For now let's assume a default of 8 seconds unless specified by the app.
-  const fullDuration = guessDefaultDuration(category, globals);
-  const duration_seconds =
-    category === "drum_loop" ? fullDuration / 2 : fullDuration;
+  // 3. Request full duration (client-side will quantize to exact grid timing)
+  const duration_seconds = guessDefaultDuration(category, globals);
 
   // 4. Get category-specific prompt influence (unless overridden in options)
   const prompt_influence = options?.prompt_influence ?? getCategoryPromptInfluence(category);
@@ -79,7 +75,7 @@ function guessDefaultDuration(
 
   switch (category) {
     case "drum_loop":
-      // Full loop duration (will be halved by caller for API request)
+      // Full loop duration (client will quantize to exact grid timing)
       return loopDurationSeconds;
 
     case "drum_one_shot":
