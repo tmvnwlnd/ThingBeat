@@ -4,6 +4,7 @@ import { useStore } from '@/store/useStore';
 import { useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 import JSZip from 'jszip';
+import Link from 'next/link';
 
 export function Header() {
   const settings = useStore((state) => state.settings);
@@ -196,6 +197,14 @@ export function Header() {
           <div className="bg-thingbeat-white px-2 py-2.5">
             <h1 className="text-[32px] font-bold text-thingbeat-blue leading-none">Thingbeat</h1>
           </div>
+
+          {/* Community Link */}
+          <Link
+            href="/community"
+            className="px-4 py-2 border-2 border-thingbeat-white bg-thingbeat-blue text-thingbeat-white hover:bg-thingbeat-white hover:text-thingbeat-blue text-sm"
+          >
+            Community
+          </Link>
 
           {/* Loop Length Control */}
           <div className="flex items-center gap-4 p-2">
